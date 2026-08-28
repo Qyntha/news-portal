@@ -11,25 +11,37 @@ const hotKeywords = [
   '全球市场'
 ];
 
+// 顶部公告（轮播展示）
+const announcements = [
+  '📢 欢迎访问相思门户网，本地视野，全球资讯。',
+  '📰 国务院常务会议部署下半年稳增长重点任务',
+  '🌍 多国领导人就加强区域合作达成初步共识',
+  '🤖 人工智能大模型加速在制造业落地应用',
+  '📚 学习资料板块已上线，欢迎使用。'
+];
+
 // 头条焦点 · 三张头条卡（含标题、图片、描述、标签）
 const topCards = [
   {
     title: '全球气候峰会就减排目标达成阶段性共识',
     image: 'https://picsum.photos/seed/green-policy/640/420',
     description: '聚焦多边气候治理新进展',
-    tag: '联合国气候峰会'
+    tag: '联合国气候峰会',
+    articleId: 3
   },
   {
     title: '跨境物流提速为中欧贸易注入新动能',
     image: 'https://picsum.photos/seed/rail-europe/640/420',
     description: '中欧班列通道持续扩容',
-    tag: '中欧经贸'
+    tag: '中欧经贸',
+    articleId: 4
   },
   {
     title: '国产芯片产业迎来新一轮升级机遇',
     image: 'https://picsum.photos/seed/semiconductor/640/420',
     description: '供应链本土化进程加快',
-    tag: '全球市场'
+    tag: '全球市场',
+    articleId: 6
   }
 ];
 
@@ -57,6 +69,7 @@ const articles = [
     id: 0,
     title: '国务院常务会议部署下半年稳增长重点任务',
     time: '2026-08-28 09:20',
+    topic: '中欧经贸',
     content: [
       '近日召开的国务院常务会议研究部署下半年经济工作重点任务，强调要统筹稳增长、促改革、调结构、惠民生、防风险，保持经济运行在合理区间。',
       '会议提出，要持续释放消费和投资潜力，加快重大项目建设进度，推动设备更新和消费品以旧换新政策落地见效，为内需增长提供有力支撑。',
@@ -68,6 +81,7 @@ const articles = [
     id: 1,
     title: '央行公开市场操作今日净投放 流动性合理充裕',
     time: '2026-08-28 09:05',
+    topic: '全球市场',
     content: [
       '央行今日开展公开市场操作，通过逆回购等方式向市场净投放流动性，资金面总体保持合理充裕。',
       '业内人士表示，近期银行体系流动性较为平稳，央行精准开展公开市场操作，有助于熨平短期资金面波动，稳定市场预期。',
@@ -79,6 +93,7 @@ const articles = [
     id: 2,
     title: '本地新开轨道交通线路启动空载试运行',
     time: '2026-08-28 08:55',
+    topic: '联合国气候峰会',
     content: [
       '今日上午，本地新开通的轨道交通线路正式启动空载试运行，标志着该线路建设进入开通运营前的关键阶段。',
       '该线路全长约30公里，共设车站22座，连接城市中心与多个重点功能区，建成后将进一步优化城市公共交通网络布局。',
@@ -90,6 +105,7 @@ const articles = [
     id: 3,
     title: '多国领导人就加强区域合作达成初步共识',
     time: '2026-08-28 08:40',
+    topic: '联合国气候峰会',
     content: [
       '在此间举行的国际会议期间，多国领导人举行双边会见，就深化区域经济合作、共同应对全球性挑战等议题交换意见。',
       '与会各方一致认为，当前国际形势复杂多变，各国应坚持多边主义，加强政策沟通与协调，推动贸易投资自由化便利化，维护全球产业链供应链稳定。',
@@ -101,6 +117,7 @@ const articles = [
     id: 4,
     title: '人工智能大模型加速在制造业落地应用',
     time: '2026-08-28 08:12',
+    topic: '全球市场',
     content: [
       '当前，人工智能大模型正加速向制造业渗透，从产品设计、质量检测到生产调度、供应链管理等环节，智能化应用场景不断拓展。',
       '多家制造企业负责人表示，借助大模型的自然语言理解与数据分析能力，企业能够更高效地处理工艺文档、优化排产方案，显著降低运营成本。',
@@ -112,6 +129,7 @@ const articles = [
     id: 5,
     title: '国家博物馆推出馆藏精品特展',
     time: '2026-08-28 07:58',
+    topic: '中欧经贸',
     content: [
       '国家博物馆近日推出馆藏精品特展，集中展出近年来新入藏及首次公开展出的珍贵文物，吸引众多观众前来观展。',
       '本次特展分为多个主题单元，通过文物、图片与多媒体互动相结合的方式，生动展现中华文明的源远流长与璀璨成就。',
@@ -123,6 +141,7 @@ const articles = [
     id: 6,
     title: '城市书房建设扩容 公共文化服务再提升',
     time: '2026-08-28 07:30',
+    topic: '全球市场',
     content: [
       '今年以来，本地持续推进城市书房建设，一批风格各异、功能完善的公共阅读空间陆续向市民开放，受到广泛欢迎。',
       '新投用的城市书房大多选址在社区、商圈和交通枢纽周边，配备自助借还设备，支持图书通借通还，市民可就近享受便捷阅读服务。',
@@ -139,28 +158,32 @@ const channelNews = [
     name: '国际',
     title: '欧洲多国推进能源结构绿色转型',
     description: '可再生能源装机占比持续提升',
-    image: 'https://picsum.photos/seed/world-diplomacy/520/300'
+    image: 'https://picsum.photos/seed/world-diplomacy/520/300',
+    articleId: 3
   },
   {
     id: 'channel-finance',
     name: '财经',
     title: '消费市场持续回暖 新业态激发内需',
     description: '人民币汇率保持基本稳定',
-    image: 'https://picsum.photos/seed/market-finance/520/300'
+    image: 'https://picsum.photos/seed/market-finance/520/300',
+    articleId: 1
   },
   {
     id: 'channel-tech',
     name: '科技',
     title: '大模型加速行业落地应用',
     description: '算力基础设施建设提速',
-    image: 'https://picsum.photos/seed/ai-tech/520/300'
+    image: 'https://picsum.photos/seed/ai-tech/520/300',
+    articleId: 4
   },
   {
     id: 'channel-culture',
     name: '文化',
     title: '国家博物馆推出馆藏精品特展',
     description: '城市公共文化服务提质增效',
-    image: 'https://picsum.photos/seed/museum-culture/520/300'
+    image: 'https://picsum.photos/seed/museum-culture/520/300',
+    articleId: 5
   }
 ];
 
@@ -176,10 +199,11 @@ const services = [
   { name: '生活缴费', icon: 'M3 7h18M3 12h18M3 17h18M6 5v2M12 10v2M18 15v2' }
 ];
 
-// 热点专题（名称、图标 SVG path）
+// 学习资料（名称、图标 SVG path）
 const topics = [
-  { name: '高质量发展调研行', icon: 'M3 17l4-6 4 3 4-8 3 5 3-2' },
-  { name: '乡村振兴观察', icon: 'M12 21a9 9 0 100-18M12 21c2-3 3-6 3-9M12 21c-2-3-3-6-3-9m3 0a5 5 0 100-10' },
-  { name: '数字城市建设', icon: 'M12 3l8 4-8 4-8-4 8-4zM4 11l8 4 8-4M4 17l8 4 8-4' },
-  { name: '绿色低碳生活', icon: 'M5 14a7 7 0 1114 0M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4m-9 3h4' }
+  { name: '外文报纸', icon: 'M4 5a2 2 0 012-2h12a2 2 0 012 2v11a2 2 0 01-2 2H8l-4 4V5zM8 8h8M8 11h8M8 14h5' },
+  { name: '电子课本', icon: 'M12 3L2 8l10 5 10-5-10-5zM4 10v6m0 0a8 5 0 0016 0M6 12.5V17a6 3.5 0 0012 0v-4.5' },
+  { name: '学习工具', icon: 'M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z' },
+  { name: '教育资讯', icon: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0' },
+  { name: '阅读推荐', icon: 'M19 21l-7-4-7 4V5a2 2 0 012-2h10a2 2 0 012 2v16z' }
 ];

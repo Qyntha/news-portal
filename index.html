@@ -80,19 +80,21 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 
-  <!-- ===== 顶部服务条 ===== -->
+  <!-- ===== 顶部服务条（公告轮播） ===== -->
   <div class="bg-brand-900 text-brand-100 text-xs">
-    <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between">
-      <div class="flex items-center gap-6">
-        <span class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-          </svg>
-          温馨提示：本站今日访问 1.2 万人
-        </span>
-        <span class="hidden sm:inline text-brand-300/80">站内信条数 1</span>
+    <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between gap-4">
+      <div class="flex-1 min-w-0 flex items-center gap-6">
+        <div id="announcement-bar" class="flex-1 min-w-0 flex items-center justify-center">
+          <span id="announcement-text" class="flex items-center gap-1.5 transition-opacity duration-700" style="opacity:0">
+            <svg class="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="announcement-content" class="truncate">📢 欢迎访问相思门户网</span>
+          </span>
+        </div>
+        <span class="hidden sm:inline text-brand-300/80 shrink-0">站内信条数 1</span>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-4 shrink-0">
         <span id="today-date" class="text-brand-200">2026年8月28日 星期五</span>
       </div>
     </div>
@@ -136,12 +138,11 @@
     <div class="max-w-7xl mx-auto px-4 flex items-stretch">
       <ul id="main-nav" class="flex items-stretch overflow-x-auto">
         <li><a href="#" class="nav-link active">首页</a></li>
-        <li><a href="#" class="nav-link">本地</a></li>
         <li><a href="#" class="nav-link" data-target="channel-intl">国际</a></li>
         <li><a href="#" class="nav-link" data-target="channel-finance">财经</a></li>
         <li><a href="#" class="nav-link" data-target="channel-tech">科技</a></li>
         <li><a href="#" class="nav-link" data-target="channel-culture">文化</a></li>
-        <li><a href="#" class="nav-link">体育</a></li>
+        <li><a href="./allnews.html" class="nav-link">全部</a></li>
       </ul>
       <div class="ml-auto flex items-center gap-3">
         <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
@@ -154,10 +155,10 @@
   <!-- ===== 热词条 / 快捷搜索 ===== -->
   <div class="hotbar bg-white border-b border-slate-100 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
-      <span class="px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-semibold">热门</span>
+      <a href="topic.html" class="px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-semibold hover:opacity-90 transition cursor-pointer">热门</a>
       <div id="hot-keywords" class="flex items-center gap-4 flex-wrap"></div>
       <span class="mx-2 h-4 w-px bg-slate-200 hidden md:inline-block"></span>
-      <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">更多热词 ›</a>
+      <a href="topic.html" class="text-sm text-slate-600 hover:text-brand-600 transition">更多专题 ›</a>
     </div>
   </div>
 
@@ -173,11 +174,10 @@
       <!-- 左 · 封面头条 -->
       <div class="lg:col-span-2">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">杂闻奖点</h2>
-          <a href="#" class="text-sm text-slate-400 hover:text-brand-600 transition">更多 ›</a>
+          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">今日头条</h2>
         </div>
 
-        <a id="cover-news" href="#" class="group relative block rounded-xl overflow-hidden shadow-card"></a>
+        <a id="cover-news" href="article.html?id=0" class="group relative block rounded-xl overflow-hidden shadow-card"></a>
       </div>
 
       <!-- 右 · 最新要闻 -->
@@ -202,7 +202,7 @@
     <div id="channel-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
   </section>
 
-  <!-- ===== 便民服务 + 热点专题 ===== -->
+  <!-- ===== 便民服务 + 学习资料 ===== -->
   <section class="max-w-7xl mx-auto px-4 pb-10">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -210,19 +210,15 @@
       <div class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">便民服务</h2>
-          <span class="text-xs text-slate-400 flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            城镇服务 · 圈
-          </span>
         </div>
 
         <div id="services-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
       </div>
 
-      <!-- 热点专题 -->
+      <!-- 学习资料 -->
       <aside class="bg-white rounded-xl shadow-card p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">热点专题</h2>
+          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">学习资料</h2>
           <span class="text-xs text-slate-400">综合</span>
         </div>
         <ul id="topics" class="space-y-1 text-sm"></ul>
@@ -241,8 +237,6 @@
         <a href="#" class="hover:text-white transition">版权声明</a>
         <span class="h-4 w-px bg-brand-600"></span>
         <a href="#" class="hover:text-white transition">隐私政策</a>
-        <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-300">网站标识码：4401000001</span>
       </div>
     </div>
     <div class="bg-brand-900">
@@ -276,6 +270,32 @@
       dateEl.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week[now.getDay()]}`;
     }
 
+    // ----- 顶部公告轮播（每 6 秒切换，淡入淡出） -----
+    const announcementText = document.getElementById('announcement-text');
+    const announcementContent = document.getElementById('announcement-content');
+    let announceIndex = 0;
+    let announceBusy = false;
+
+    function renderAnnouncement(index) {
+      if (!announcementText || !announcementContent) return;
+      announcementContent.textContent = announcements[index];
+      announcementText.style.opacity = '1';
+    }
+
+    if (announcementText && announcements && announcements.length > 0) {
+      renderAnnouncement(0);
+      setInterval(() => {
+        if (announceBusy) return;
+        announceBusy = true;
+        announcementText.style.opacity = '0';
+        setTimeout(() => {
+          announceIndex = (announceIndex + 1) % announcements.length;
+          renderAnnouncement(announceIndex);
+          announceBusy = false;
+        }, 700);
+      }, 6000);
+    }
+
     // ----- 导航链接样式 -----
     document.querySelectorAll('.nav-link').forEach(link => {
       link.addEventListener('click', (e) => {
@@ -294,7 +314,7 @@
     const hotKeywordsWrap = document.getElementById('hot-keywords');
     if (hotKeywordsWrap) {
       hotKeywordsWrap.innerHTML = hotKeywords.map(k => `
-        <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">${k}</a>
+        <a href="topic.html?category=${encodeURIComponent(k)}" class="text-sm text-slate-600 hover:text-brand-600 transition">${k}</a>
       `).join('');
     }
 
@@ -302,7 +322,7 @@
     const topCardsWrap = document.getElementById('top-cards');
     if (topCardsWrap) {
       topCardsWrap.innerHTML = topCards.map((card, i) => `
-        <article class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <a href="article.html?id=${card.articleId}" class="group block bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition cursor-pointer">
           <div class="relative h-48 overflow-hidden">
             <img src="${card.image}" alt="${card.tag}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
             <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">${i + 1}</span>
@@ -312,10 +332,10 @@
             <p class="mt-1 text-xs text-slate-400">${card.description}</p>
             <div class="mt-3 flex items-center justify-between">
               <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">${card.tag}</span>
-              <button class="w-8 h-8 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center hover:bg-brand-700 transition">更多</button>
+              <span class="text-xs text-brand-500 group-hover:text-brand-700 transition">阅读全文 →</span>
             </div>
           </div>
-        </article>
+        </a>
       `).join('');
     }
 
@@ -349,7 +369,7 @@
     const channelCardsWrap = document.getElementById('channel-cards');
     if (channelCardsWrap) {
       channelCardsWrap.innerHTML = channelNews.map((channel, i) => `
-        <article id="${channel.id}" class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <a id="${channel.id}" href="article.html?id=${channel.articleId}" class="group block bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
           <div class="relative h-36 overflow-hidden">
             <img src="${channel.image}" alt="${channel.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
             <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">${i + 1}</span>
@@ -359,7 +379,7 @@
             <h3 class="mt-2 text-base font-bold text-slate-800 group-hover:text-brand-600 transition">${channel.title}</h3>
             <p class="mt-1 text-xs text-slate-400">${channel.description}</p>
           </div>
-        </article>
+        </a>
       `).join('');
     }
 
@@ -378,7 +398,7 @@
       `).join('');
     }
 
-    // ----- 热点专题渲染 -----
+    // ----- 学习资料渲染 -----
     const topicsList = document.getElementById('topics');
     if (topicsList) {
       topicsList.innerHTML = topics.map(t => `
