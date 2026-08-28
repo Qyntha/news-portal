@@ -336,10 +336,10 @@
     // ----- 最新要闻渲染 -----
     const latestNewsList = document.getElementById('latest-news');
     if (latestNewsList) {
-      latestNewsList.innerHTML = latestNews.map(n => `
+      latestNewsList.innerHTML = latestNews.map((n, i) => `
         <li class="news-item flex items-start gap-3 py-3">
           <span class="news-dot mt-1.5"></span>
-          <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">${n.title}</a>
+          <a href="article.html?id=${i}" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">${n.title}</a>
           <span class="text-xs text-slate-400 shrink-0 mt-0.5">${n.time}</span>
         </li>
       `).join('');

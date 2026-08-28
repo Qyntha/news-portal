@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文章详情 - 相思门户网</title>
+  <meta name="description" content="相思门户网——本地视野，全球资讯。阅读新闻全文，了解最新动态。" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#eef2fb',
+              100: '#dbe3f5',
+              200: '#b6c4e8',
+              300: '#8aa0d6',
+              400: '#5a77c0',
+              500: '#35539f',
+              DEFAULT: '#1e3a8a',
+              600: '#1e3a8a',
+              700: '#173071',
+              800: '#122658',
+              900: '#0d1c42'
+            },
+            accent: {
+              DEFAULT: '#f59e0b',
+              light: '#fbbf24'
+            }
+          },
+          fontFamily: {
+            sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            card: '0 1px 3px rgba(13,28,66,.06), 0 8px 24px rgba(13,28,66,.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { -webkit-font-smoothing: antialiased; }
+
+    /* 顶部导航栏下方悬浮热词条 */
+    .hotbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+  </style>
+  <script src="data.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+  <!-- ===== 顶部服务条 ===== -->
+  <div class="bg-brand-900 text-brand-100 text-xs">
+    <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          温馨提示：本站今日访问 1.2 万人
+        </span>
+        <span class="hidden sm:inline text-brand-300/80">站内信条数 1</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="today-date" class="text-brand-200">2026年8月28日 星期五</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 头部 Logo + 搜索 + 登录 ===== -->
+  <header class="bg-white border-b border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
+      <!-- Logo -->
+      <a href="index.html" class="flex items-center gap-3 shrink-0">
+        <img src="logo.png" alt="相思门户网" title="相思门户网"
+             class="h-16 w-auto object-contain shrink-0"
+             onerror="this.style.display='none';document.getElementById('logo-text').style.display='block';" />
+        <div id="logo-text" class="leading-tight">
+          <div class="text-2xl font-bold text-accent tracking-wide">相思门户网</div>
+          <div class="text-[11px] text-slate-400 tracking-widest">本地视野 · 全球资讯</div>
+        </div>
+      </a>
+
+      <!-- 搜索 -->
+      <form id="search-form" class="flex-1 min-w-[220px] max-w-xl ml-auto">
+        <div class="flex items-center bg-slate-100 rounded-full border border-slate-200 px-4 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+          <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input id="search-input" type="text" placeholder="搜索新闻、专题、服务"
+                 class="flex-1 bg-transparent outline-none text-sm px-3 placeholder:text-slate-400" />
+          <button type="submit" class="text-sm font-medium text-brand-600 hover:text-brand-800 px-2">搜索</button>
+        </div>
+      </form>
+
+      <!-- 登录 -->
+      <button class="shrink-0 px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
+        登录
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 主导航 ===== -->
+  <nav class="bg-brand-600 text-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex items-stretch">
+      <ul id="main-nav" class="flex items-stretch overflow-x-auto">
+        <li><a href="index.html" class="nav-link">首页</a></li>
+        <li><a href="index.html" class="nav-link">本地</a></li>
+        <li><a href="index.html#channel-intl" class="nav-link">国际</a></li>
+        <li><a href="index.html#channel-finance" class="nav-link">财经</a></li>
+        <li><a href="index.html#channel-tech" class="nav-link">科技</a></li>
+        <li><a href="index.html#channel-culture" class="nav-link">文化</a></li>
+        <li><a href="index.html" class="nav-link">体育</a></li>
+      </ul>
+      <div class="ml-auto flex items-center gap-3">
+        <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
+          注册
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== 热词条 ===== -->
+  <div class="hotbar bg-white border-b border-slate-100 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+      <span class="px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-semibold">热门</span>
+      <div id="hot-keywords" class="flex items-center gap-4 flex-wrap"></div>
+      <span class="mx-2 h-4 w-px bg-slate-200 hidden md:inline-block"></span>
+      <a href="index.html" class="text-sm text-slate-600 hover:text-brand-600 transition">更多热词 ›</a>
+    </div>
+  </div>
+
+  <!-- ===== 文章正文 ===== -->
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div id="article-container" class="bg-white rounded-xl shadow-card p-6 md:p-10 max-w-4xl mx-auto"></div>
+  </main>
+
+  <!-- ===== 底部 ===== -->
+  <footer class="bg-brand-800 text-brand-100">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
+        <a href="index.html" class="hover:text-white transition">关于我们</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="index.html" class="hover:text-white transition">联系方式</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="index.html" class="hover:text-white transition">版权声明</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="index.html" class="hover:text-white transition">隐私政策</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <span class="text-brand-300">网站标识码：4401000001</span>
+      </div>
+    </div>
+    <div class="bg-brand-900">
+      <div class="max-w-7xl mx-auto px-4 py-5 text-center">
+        <div class="text-base font-semibold text-white tracking-widest">新闻立网 · 服务生活</div>
+        <p class="mt-2 text-xs text-brand-300/80">© 2026 相思门户网 · 版权所有 · 备案号：粤ICP备00000000号</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== 右侧悬浮按钮 ===== -->
+  <div class="fixed right-4 bottom-6 flex flex-col gap-3 z-40">
+    <button id="back-to-top" title="返回顶部"
+            class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition items-center justify-center hidden">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    <button title="热点" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
+      <span class="text-[11px] font-semibold">热点</span>
+    </button>
+    <button title="分享" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
+      <span class="text-[11px] font-semibold">分享</span>
+    </button>
+  </div>
+
+  <script>
+    // ----- 今日日期 -----
+    const dateEl = document.getElementById('today-date');
+    const week = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    const now = new Date();
+    if (dateEl) {
+      dateEl.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week[now.getDay()]}`;
+    }
+
+    // ----- 热门搜索词渲染 -----
+    const hotKeywordsWrap = document.getElementById('hot-keywords');
+    if (hotKeywordsWrap) {
+      hotKeywordsWrap.innerHTML = hotKeywords.map(k => `
+        <a href="index.html" class="text-sm text-slate-600 hover:text-brand-600 transition">${k}</a>
+      `).join('');
+    }
+
+    // ----- 文章渲染 -----
+    const params = new URLSearchParams(window.location.search);
+    const idParam = params.get('id');
+    const id = Number(idParam);
+    const article = (idParam !== null && idParam.trim() !== '' && Number.isInteger(id) && id >= 0 && id < articles.length)
+      ? articles[id]
+      : null;
+
+    const container = document.getElementById('article-container');
+    if (container) {
+      if (article) {
+        document.title = `${article.title} - 相思门户网`;
+        container.innerHTML = `
+          <nav class="text-xs text-slate-400 mb-6">
+            <a href="index.html" class="hover:text-brand-600 transition">首页</a>
+            <span class="mx-2">›</span>
+            <span>正文</span>
+          </nav>
+          <h1 class="text-3xl md:text-4xl font-bold text-slate-900 leading-snug">${article.title}</h1>
+          <div class="mt-4 flex items-center gap-4 text-xs text-slate-400">
+            <span>发布时间：${article.time}</span>
+            <span>来源：相思门户网</span>
+          </div>
+          <hr class="my-6 border-slate-100" />
+          <div class="space-y-5 text-[15px] leading-7 text-slate-700">
+            ${article.content.map(p => `<p>${p}</p>`).join('')}
+          </div>
+          <div class="mt-10 pt-6 border-t border-slate-100 flex items-center justify-between">
+            <a href="index.html" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">
+              <span aria-hidden="true">←</span> 返回首页
+            </a>
+            <span class="text-xs text-slate-300">责任编辑：相思门户网</span>
+          </div>
+        `;
+      } else {
+        document.title = '文章不存在 - 相思门户网';
+        container.innerHTML = `
+          <div class="text-center py-16">
+            <div class="text-5xl mb-4">📄</div>
+            <h1 class="text-2xl font-bold text-slate-800">文章不存在</h1>
+            <p class="mt-3 text-sm text-slate-400">抱歉，您访问的文章不存在或已被移除。</p>
+            <a href="index.html" class="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">
+              <span aria-hidden="true">←</span> 返回首页
+            </a>
+          </div>
+        `;
+      }
+    }
+
+    // ----- 返回顶部 -----
+    const backBtn = document.getElementById('back-to-top');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 400) {
+        backBtn.classList.remove('hidden');
+        backBtn.classList.add('flex');
+      } else {
+        backBtn.classList.add('hidden');
+        backBtn.classList.remove('flex');
+      }
+    });
+    backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // ----- 搜索（模拟） -----
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('search-input').value.trim();
+      if (q) alert(`正在搜索：“${q}”`);
+    });
+  </script>
+
+  <style>
+    .nav-link {
+      display: flex;
+      align-items: center;
+      height: 52px;
+      padding: 0 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: rgba(255,255,255,.85);
+      transition: background .2s, color .2s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.12); color: #fff; }
+  </style>
+</body>
+</html>
