@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>相思门户网 · 新闻立网 服务生活</title>
+  <meta name="description" content="相思门户网——本地视野，全球资讯。覆盖本地、国际、财经、科技、文化、体育六大频道，便民服务一站直达。" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#eef2fb',
+              100: '#dbe3f5',
+              200: '#b6c4e8',
+              300: '#8aa0d6',
+              400: '#5a77c0',
+              500: '#35539f',
+              DEFAULT: '#1e3a8a',
+              600: '#1e3a8a',
+              700: '#173071',
+              800: '#122658',
+              900: '#0d1c42'
+            },
+            accent: {
+              DEFAULT: '#f59e0b',
+              light: '#fbbf24'
+            }
+          },
+          fontFamily: {
+            sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            card: '0 1px 3px rgba(13,28,66,.06), 0 8px 24px rgba(13,28,66,.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { -webkit-font-smoothing: antialiased; }
+
+    /* 新闻项时间轴圆点 */
+    .news-dot {
+      position: relative;
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      background: #1e3a8a;
+      flex-shrink: 0;
+    }
+    .news-dot::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      bottom: -14px;
+      width: 1px;
+      height: 14px;
+      background: #cbd5e1;
+    }
+    .news-item:last-child .news-dot::after { display: none; }
+
+    /* 主图渐隐遮罩 */
+    .hero-mask {
+      background: linear-gradient(180deg, rgba(13,28,66,0) 0%, rgba(13,28,66,.55) 55%, rgba(13,28,66,.85) 100%);
+    }
+
+    /* 顶部导航栏下方悬浮热词条 */
+    .hotbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+  <!-- ===== 顶部服务条 ===== -->
+  <div class="bg-brand-900 text-brand-100 text-xs">
+    <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          温馨提示：本站今日访问 1.2 万人
+        </span>
+        <span class="hidden sm:inline text-brand-300/80">站内信条数 1</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="today-date" class="text-brand-200">2026年8月28日 星期五</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 头部 Logo + 搜索 + 登录 ===== -->
+  <header class="bg-white border-b border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-3 shrink-0">
+        <img src="logo.png" alt="相思门户网" title="相思门户网"
+             class="h-16 w-auto object-contain shrink-0"
+             onerror="this.style.display='none';document.getElementById('logo-text').style.display='block';" />
+        <div id="logo-text" class="leading-tight">
+          <div class="text-2xl font-bold text-accent tracking-wide">相思门户网</div>
+          <div class="text-[11px] text-slate-400 tracking-widest">本地视野 · 全球资讯</div>
+        </div>
+      </a>
+
+      <!-- 搜索 -->
+      <form id="search-form" class="flex-1 min-w-[220px] max-w-xl ml-auto">
+        <div class="flex items-center bg-slate-100 rounded-full border border-slate-200 px-4 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+          <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input id="search-input" type="text" placeholder="搜索新闻、专题、服务"
+                 class="flex-1 bg-transparent outline-none text-sm px-3 placeholder:text-slate-400" />
+          <button type="submit" class="text-sm font-medium text-brand-600 hover:text-brand-800 px-2">搜索</button>
+        </div>
+      </form>
+
+      <!-- 登录 -->
+      <button class="shrink-0 px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
+        登录
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 主导航 ===== -->
+  <nav class="bg-brand-600 text-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex items-stretch">
+      <ul id="main-nav" class="flex items-stretch overflow-x-auto">
+        <li><a href="#" class="nav-link active">首页</a></li>
+        <li><a href="#" class="nav-link">本地</a></li>
+        <li><a href="#" class="nav-link" data-target="channel-intl">国际</a></li>
+        <li><a href="#" class="nav-link" data-target="channel-finance">财经</a></li>
+        <li><a href="#" class="nav-link" data-target="channel-tech">科技</a></li>
+        <li><a href="#" class="nav-link" data-target="channel-culture">文化</a></li>
+        <li><a href="#" class="nav-link">体育</a></li>
+      </ul>
+      <div class="ml-auto flex items-center gap-3">
+        <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
+          注册
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== 热词条 / 快捷搜索 ===== -->
+  <div class="hotbar bg-white border-b border-slate-100 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+      <span class="px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-semibold">热门</span>
+      <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">联合国气候峰会</a>
+      <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">中欧经贸</a>
+      <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">全球市场</a>
+      <span class="mx-2 h-4 w-px bg-slate-200 hidden md:inline-block"></span>
+      <a href="#" class="text-sm text-slate-600 hover:text-brand-600 transition">更多热词 ›</a>
+    </div>
+  </div>
+
+  <!-- ===== 头条焦点 · 三张头条卡 ===== -->
+  <section class="max-w-7xl mx-auto px-4 pt-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- 卡 1 -->
+      <article class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-48 overflow-hidden">
+          <img src="https://picsum.photos/seed/green-policy/640/420" alt="联合国气候峰会" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">1</span>
+        </div>
+        <div class="p-5">
+          <h3 class="text-base font-bold text-slate-800 group-hover:text-brand-600 transition">全球气候峰会就减排目标达成阶段性共识</h3>
+          <p class="mt-1 text-xs text-slate-400">聚焦多边气候治理新进展</p>
+          <div class="mt-3 flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">联合国气候峰会</span>
+            <button class="w-8 h-8 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center hover:bg-brand-700 transition">更多</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 卡 2 -->
+      <article class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-48 overflow-hidden">
+          <img src="https://picsum.photos/seed/rail-europe/640/420" alt="中欧班列" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">2</span>
+        </div>
+        <div class="p-5">
+          <h3 class="text-base font-bold text-slate-800 group-hover:text-brand-600 transition">跨境物流提速为中欧贸易注入新动能</h3>
+          <p class="mt-1 text-xs text-slate-400">中欧班列通道持续扩容</p>
+          <div class="mt-3 flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">中欧经贸</span>
+            <button class="w-8 h-8 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center hover:bg-brand-700 transition">更多</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 卡 3 -->
+      <article class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-48 overflow-hidden">
+          <img src="https://picsum.photos/seed/semiconductor/640/420" alt="芯片制造" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">3</span>
+        </div>
+        <div class="p-5">
+          <h3 class="text-base font-bold text-slate-800 group-hover:text-brand-600 transition">国产芯片产业迎来新一轮升级机遇</h3>
+          <p class="mt-1 text-xs text-slate-400">供应链本土化进程加快</p>
+          <div class="mt-3 flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">全球市场</span>
+            <button class="w-8 h-8 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center hover:bg-brand-700 transition">更多</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 头条封面 + 最新要闻 ===== -->
+  <section class="max-w-7xl mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- 左 · 封面头条 -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">杂闻奖点</h2>
+          <a href="#" class="text-sm text-slate-400 hover:text-brand-600 transition">更多 ›</a>
+        </div>
+
+        <a href="#" class="group relative block rounded-xl overflow-hidden shadow-card">
+          <img src="https://picsum.photos/seed/city-skyline/1280/720" alt="今日重点" class="w-full h-[420px] object-cover group-hover:scale-105 transition duration-700" loading="lazy" />
+          <span class="absolute top-5 right-5 px-3 py-1 bg-yellow-400 text-brand-900 text-xs font-bold rounded-sm shadow">封面头条</span>
+          <div class="absolute inset-0 hero-mask"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-6">
+            <h3 class="text-2xl md:text-3xl font-bold text-white leading-snug group-hover:text-accent-light transition">
+              今日重点：多措并举稳增长 民生保障再升级
+            </h3>
+            <p class="mt-2 text-sm text-white/85">聚焦宏观经济、产业政策与本地发展前沿</p>
+          </div>
+        </a>
+      </div>
+
+      <!-- 右 · 最新要闻 -->
+      <aside class="bg-white rounded-xl shadow-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-lg font-bold text-slate-800">最新要闻</h2>
+          <span class="px-2 py-0.5 rounded bg-brand-600 text-white text-xs">快讯</span>
+        </div>
+        <ul id="latest-news" class="divide-y divide-slate-100 text-sm">
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">国务院常务会议部署下半年稳增长重点任务</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">10分钟前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">央行公开市场操作今日净投放 流动性合理充裕</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">32分钟前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">本地新开轨道交通线路启动空载试运行</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">22分钟前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">多国领导人就加强区域合作达成初步共识</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">42分钟前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">人工智能大模型加速在制造业落地应用</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">1小时前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">国家博物馆推出馆藏精品特展</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">2小时前</span>
+          </li>
+          <li class="news-item flex items-start gap-3 py-3">
+            <span class="news-dot mt-1.5"></span>
+            <a href="#" class="flex-1 text-slate-700 hover:text-brand-600 transition leading-snug">城市书房建设扩容 公共文化服务再提升</a>
+            <span class="text-xs text-slate-400 shrink-0 mt-0.5">3小时前</span>
+          </li>
+        </ul>
+        <button id="load-more" class="mt-auto pt-4 text-xs text-brand-500 hover:text-brand-700 transition text-center">查看更多要闻 ›</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===== 频道精选 ===== -->
+  <section class="max-w-7xl mx-auto px-4 pb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">频道精选</h2>
+      <a href="#" class="text-sm text-slate-400 hover:text-brand-600 transition">导航与资讯融合 ›</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- 国际 -->
+      <article id="channel-intl" class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-36 overflow-hidden">
+          <img src="https://picsum.photos/seed/world-diplomacy/520/300" alt="国际" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">1</span>
+        </div>
+        <div class="p-5">
+          <span class="inline-block px-2.5 py-1 rounded bg-blue-50 text-brand-600 text-xs font-semibold">国际</span>
+          <h3 class="mt-2 text-base font-bold text-slate-800 group-hover:text-brand-600 transition">欧洲多国推进能源结构绿色转型</h3>
+          <p class="mt-1 text-xs text-slate-400">可再生能源装机占比持续提升</p>
+        </div>
+      </article>
+
+      <!-- 财经 -->
+      <article id="channel-finance" class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-36 overflow-hidden">
+          <img src="https://picsum.photos/seed/market-finance/520/300" alt="财经" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">2</span>
+        </div>
+        <div class="p-5">
+          <span class="inline-block px-2.5 py-1 rounded bg-blue-50 text-brand-600 text-xs font-semibold">财经</span>
+          <h3 class="mt-2 text-base font-bold text-slate-800 group-hover:text-brand-600 transition">消费市场持续回暖 新业态激发内需</h3>
+          <p class="mt-1 text-xs text-slate-400">人民币汇率保持基本稳定</p>
+        </div>
+      </article>
+
+      <!-- 科技 -->
+      <article id="channel-tech" class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-36 overflow-hidden">
+          <img src="https://picsum.photos/seed/ai-tech/520/300" alt="科技" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">3</span>
+        </div>
+        <div class="p-5">
+          <span class="inline-block px-2.5 py-1 rounded bg-blue-50 text-brand-600 text-xs font-semibold">科技</span>
+          <h3 class="mt-2 text-base font-bold text-slate-800 group-hover:text-brand-600 transition">大模型加速行业落地应用</h3>
+          <p class="mt-1 text-xs text-slate-400">算力基础设施建设提速</p>
+        </div>
+      </article>
+
+      <!-- 文化 -->
+      <article id="channel-culture" class="group bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition">
+        <div class="relative h-36 overflow-hidden">
+          <img src="https://picsum.photos/seed/museum-culture/520/300" alt="文化" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+          <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">4</span>
+        </div>
+        <div class="p-5">
+          <span class="inline-block px-2.5 py-1 rounded bg-blue-50 text-brand-600 text-xs font-semibold">文化</span>
+          <h3 class="mt-2 text-base font-bold text-slate-800 group-hover:text-brand-600 transition">国家博物馆推出馆藏精品特展</h3>
+          <p class="mt-1 text-xs text-slate-400">城市公共文化服务提质增效</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 便民服务 + 热点专题 ===== -->
+  <section class="max-w-7xl mx-auto px-4 pb-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- 便民服务 -->
+      <div class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">便民服务</h2>
+          <span class="text-xs text-slate-400 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            城镇服务 · 圈
+          </span>
+        </div>
+
+        <div id="services-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+      </div>
+
+      <!-- 热点专题 -->
+      <aside class="bg-white rounded-xl shadow-card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">热点专题</h2>
+          <span class="text-xs text-slate-400">综合</span>
+        </div>
+        <ul id="topics" class="space-y-1 text-sm"></ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===== 底部 ===== -->
+  <footer class="bg-brand-800 text-brand-100">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
+        <a href="#" class="hover:text-white transition">关于我们</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="#" class="hover:text-white transition">联系方式</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="#" class="hover:text-white transition">版权声明</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <a href="#" class="hover:text-white transition">隐私政策</a>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <span class="text-brand-300">网站标识码：4401000001</span>
+      </div>
+    </div>
+    <div class="bg-brand-900">
+      <div class="max-w-7xl mx-auto px-4 py-5 text-center">
+        <div class="text-base font-semibold text-white tracking-widest">新闻立网 · 服务生活</div>
+        <p class="mt-2 text-xs text-brand-300/80">© 2026 相思门户网 · 版权所有 · 备案号：粤ICP备00000000号</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== 右侧悬浮按钮 ===== -->
+  <div class="fixed right-4 bottom-6 flex flex-col gap-3 z-40">
+    <button id="back-to-top" title="返回顶部"
+            class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition items-center justify-center hidden">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    <button title="热点" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
+      <span class="text-[11px] font-semibold">热点</span>
+    </button>
+    <button title="分享" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
+      <span class="text-[11px] font-semibold">分享</span>
+    </button>
+  </div>
+
+  <script>
+    // ----- 今日日期 -----
+    const dateEl = document.getElementById('today-date');
+    const week = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    const now = new Date();
+    if (dateEl) {
+      dateEl.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week[now.getDay()]}`;
+    }
+
+    // ----- 导航链接样式 -----
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        const targetId = link.dataset.target;
+        if (targetId) {
+          const el = document.getElementById(targetId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    });
+
+    // ----- 便民服务数据渲染 -----
+    const services = [
+      { name: '天气', icon: 'M3 12a9 9 0 1118 0M3 12h18M12 3a15 15 0 010 18M7.7 7.7a10 10 0 010 8.6M16.3 7.7a10 10 0 010 8.6' },
+      { name: '快递查询', icon: 'M20 8l-4-3H4a6 6 0 016 6h10zM20 8v8a2 2 0 01-2 2H6a4 4 0 01-4-4v-3m0 5.5L6 21m3-3.5L9 21M2 13h18' },
+      { name: '招聘信息', icon: 'M20 7a2 2 0 00-2-2h-3l1-2h-6l1 2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7zM8 12h8M8 16h5' },
+      { name: '政务平台', icon: 'M4 21V9l8-5 8 5v12M4 21h16M9 21v-6h6v6M12 11v2' },
+      { name: '交通出行', icon: 'M4 6a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm0 6h12m-5 5a1 1 0 100 2 1 1 0 000-2zm4 0a1 1 0 100 2 1 1 0 000-2z' },
+      { name: '医疗预约', icon: 'M12 3v18M3 12h18M8 4l4 4 4-4M8 20l4-4 4 4' },
+      { name: '教育考试', icon: 'M12 3L2 8l10 5 10-5-10-5zM4 10v6m0 0a8 5 0 0016 0M6 12.5V17a6 3.5 0 0012 0v-4.5' },
+      { name: '生活缴费', icon: 'M3 7h18M3 12h18M3 17h18M6 5v2M12 10v2M18 15v2' }
+    ];
+    const servicesGrid = document.getElementById('services-grid');
+    if (servicesGrid) {
+      servicesGrid.innerHTML = services.map(s => `
+        <a href="#" class="group flex flex-col items-center gap-3 py-4 rounded-xl hover:bg-brand-50 transition">
+          <span class="w-12 h-12 rounded-xl bg-brand-50 group-hover:bg-brand-100 text-brand-600 flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="${s.icon}"/>
+            </svg>
+          </span>
+          <span class="text-sm text-slate-600 group-hover:text-brand-600 transition">${s.name}</span>
+        </a>
+      `).join('');
+    }
+
+    // ----- 热点专题数据渲染 -----
+    const topics = [
+      { name: '高质量发展调研行', icon: 'M3 17l4-6 4 3 4-8 3 5 3-2' },
+      { name: '乡村振兴观察', icon: 'M12 21a9 9 0 100-18M12 21c2-3 3-6 3-9M12 21c-2-3-3-6-3-9m3 0a5 5 0 100-10' },
+      { name: '数字城市建设', icon: 'M12 3l8 4-8 4-8-4 8-4zM4 11l8 4 8-4M4 17l8 4 8-4' },
+      { name: '绿色低碳生活', icon: 'M5 14a7 7 0 1114 0M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4m-9 3h4' }
+    ];
+    const topicsList = document.getElementById('topics');
+    if (topicsList) {
+      topicsList.innerHTML = topics.map(t => `
+        <li>
+          <a href="#" class="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-slate-50 transition">
+            <svg class="w-5 h-5 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${t.icon}"/></svg>
+            <span class="flex-1 text-slate-700 hover:text-brand-600 transition">${t.name}</span>
+            <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </li>
+      `).join('');
+    }
+
+    // ----- 返回顶部 -----
+    const backBtn = document.getElementById('back-to-top');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 400) {
+        backBtn.classList.remove('hidden');
+        backBtn.classList.add('flex');
+      } else {
+        backBtn.classList.add('hidden');
+        backBtn.classList.remove('flex');
+      }
+    });
+    backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // ----- 搜索 & 查看更多（模拟） -----
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('search-input').value.trim();
+      if (q) alert(`正在搜索：“${q}”`);
+    });
+    document.getElementById('load-more').addEventListener('click', () => {
+      alert('已加载全部要闻，敬请期待更多内容。');
+    });
+  </script>
+
+  <style>
+    .nav-link {
+      display: flex;
+      align-items: center;
+      height: 52px;
+      padding: 0 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: rgba(255,255,255,.85);
+      transition: background .2s, color .2s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .nav-link.active { background: #fff; color: #1e3a8a; font-weight: 700; }
+  </style>
+</body>
+</html>
