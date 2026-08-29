@@ -4,7 +4,7 @@
 // response 非 2xx 时解析 JSON 并抛出错误信息。
 // ============================================================
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'news-portal-production-039e.up.railway.app';
 
 // 统一请求处理：ok 时返回解析后的 data，失败时抛错
 async function request(path, options = {}) {
