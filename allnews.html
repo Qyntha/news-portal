@@ -51,23 +51,25 @@
     }
   </style>
   <script src="data.js"></script>
+  <script src="api.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 
   <!-- ===== 顶部服务条 ===== -->
   <div class="bg-brand-900 text-brand-100 text-xs">
     <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between">
-      <div class="flex items-center gap-6">
-        <span class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-          </svg>
-          温馨提示：本站今日访问 1.2 万人
-        </span>
-        <span class="hidden sm:inline text-brand-300/80">站内信条数 1</span>
+      <div class="flex-1 min-w-0 flex items-center">
+        <div id="announcement-bar" class="flex-1 min-w-0 flex items-center">
+          <span id="announcement-text" class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="announcement-content" class="truncate"></span>
+          </span>
+        </div>
       </div>
-      <div class="flex items-center gap-4">
-        <span id="today-date" class="text-brand-200">2026年8月28日 星期五</span>
+      <div class="flex items-center gap-4 shrink-0">
+        <span id="today-date" class="text-brand-200">2026年8月29日 星期六</span>
       </div>
     </div>
   </div>
@@ -143,19 +145,19 @@
   <footer class="bg-brand-800 text-brand-100">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
-        <a href="index.html" class="hover:text-white transition">关于我们</a>
+        <span class="text-brand-100">关于我们</span>
         <span class="h-4 w-px bg-brand-600"></span>
-        <a href="index.html" class="hover:text-white transition">联系方式</a>
+        <span class="text-brand-100">联系方式</span>
         <span class="h-4 w-px bg-brand-600"></span>
-        <a href="index.html" class="hover:text-white transition">版权声明</a>
+        <span class="text-brand-100">版权声明</span>
         <span class="h-4 w-px bg-brand-600"></span>
-        <a href="index.html" class="hover:text-white transition">隐私政策</a>
+        <span class="text-brand-100">隐私政策</span>
       </div>
     </div>
     <div class="bg-brand-900">
       <div class="max-w-7xl mx-auto px-4 py-5 text-center">
         <div class="text-base font-semibold text-white tracking-widest">新闻立网 · 服务生活</div>
-        <p class="mt-2 text-xs text-brand-300/80">© 2026 相思门户网 · 版权所有 · 备案号：粤ICP备00000000号</p>
+        <p class="mt-2 text-xs text-brand-300/80">© <span id="copyright-year">2026</span> 相思门户网 · 版权所有 · 备案号：粤ICP备00000000号</p>
       </div>
     </div>
   </footer>
@@ -183,6 +185,18 @@
       dateEl.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week[now.getDay()]}`;
     }
 
+    // ----- 版权年份自动更新 -----
+    const copyrightYearEl = document.getElementById('copyright-year');
+    if (copyrightYearEl) {
+      copyrightYearEl.textContent = now.getFullYear();
+    }
+
+    // ----- 顶部公告（仅显示第一条，居左） -----
+    const announcementContent = document.getElementById('announcement-content');
+    if (announcementContent && announcements && announcements.length > 0) {
+      announcementContent.textContent = announcements[0];
+    }
+
     // ----- 热门搜索词渲染 -----
     const hotKeywordsWrap = document.getElementById('hot-keywords');
     if (hotKeywordsWrap) {
@@ -191,34 +205,57 @@
       `).join('');
     }
 
-    // ----- 全部新闻渲染 -----
+    // ----- 全部新闻渲染（后端 API） -----
     const container = document.getElementById('news-container');
     if (container) {
       document.title = '全部新闻 - 相思门户网';
       container.innerHTML = `
         <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
           <h1 class="text-2xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">全部新闻</h1>
-          <span class="text-xs text-slate-400">共 ${articles.length} 篇</span>
+          <span id="news-count" class="text-xs text-slate-400">加载中...</span>
         </div>
-        <ul class="divide-y divide-slate-100 bg-white rounded-xl shadow-card">
-          ${articles.map(a => `
-            <li class="hover:bg-slate-50 transition">
-              <a href="article.html?id=${a.id}" class="group block p-5">
-                <div class="flex items-center gap-3 text-xs flex-wrap">
-                  <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic}</span>
-                  <span class="text-slate-400">来源：相思门户网</span>
-                  <span class="text-slate-400">${a.time}</span>
-                </div>
-                <h3 class="mt-2 text-base md:text-lg font-bold text-slate-800 group-hover:text-brand-600 transition">${a.title}</h3>
-                <span class="mt-2 inline-flex items-center gap-1 text-xs text-brand-500 group-hover:text-brand-700 transition">阅读全文 →</span>
-              </a>
-            </li>
-          `).join('')}
-        </ul>
+        <div id="news-list" class="py-10 text-center text-sm text-slate-400">加载中...</div>
         <div class="mt-8 text-center">
           <a href="index.html" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">← 返回首页</a>
         </div>
       `;
+
+      api.getArticles()
+        .then(list => {
+          const countEl = document.getElementById('news-count');
+          const listEl = document.getElementById('news-list');
+          if (countEl) countEl.textContent = `共 ${list.length} 篇`;
+          if (!list || !list.length) {
+            if (listEl) listEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">暂无新闻</div>';
+            return;
+          }
+          if (listEl) {
+            listEl.innerHTML = `
+              <ul class="divide-y divide-slate-100 bg-white rounded-xl shadow-card">
+                ${list.map(a => `
+                  <li class="hover:bg-slate-50 transition">
+                    <a href="article.html?id=${a.id}" class="group block p-5">
+                      <div class="flex items-center gap-3 text-xs flex-wrap">
+                        <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '新闻'}</span>
+                        <span class="text-slate-400">来源：相思门户网</span>
+                        <span class="text-slate-400">${a.time || ''}</span>
+                      </div>
+                      <h3 class="mt-2 text-base md:text-lg font-bold text-slate-800 group-hover:text-brand-600 transition">${a.title}</h3>
+                      <span class="mt-2 inline-flex items-center gap-1 text-xs text-brand-500 group-hover:text-brand-700 transition">阅读全文 →</span>
+                    </a>
+                  </li>
+                `).join('')}
+              </ul>
+            `;
+          }
+        })
+        .catch(err => {
+          console.error('全部新闻加载失败：', err);
+          const countEl = document.getElementById('news-count');
+          const listEl = document.getElementById('news-list');
+          if (countEl) countEl.textContent = '加载失败';
+          if (listEl) listEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">新闻加载失败，请稍后重试</div>';
+        });
     }
 
     // ----- 返回顶部 -----

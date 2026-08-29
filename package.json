@@ -1,0 +1,21 @@
+{
+  "name": "news-portal",
+  "version": "1.0.0",
+  "description": "相思门户网 · 新闻资讯门户网站",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "news",
+    "portal",
+    "express"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
