@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const ARTICLES_FILE = path.join(__dirname, 'data', 'articles.json');
+const COMMENTS_FILE = path.join(__dirname, 'data', 'comments.json');
 
 // 跨域支持
 app.use(cors());
@@ -82,7 +83,7 @@ app.post('/api/login', async (req, res) => {
 
 // ---- 文章发布 ----
 app.post('/api/articles', async (req, res) => {
-  const { title, content, topic, time } = req.body || {};
+  const { title, content, topic, time, image, source } = req.body || {};
   if (!title || !content) {
     return res.status(400).json({ success: false, message: '标题和内容不能为空' });
   }
@@ -93,12 +94,53 @@ app.post('/api/articles', async (req, res) => {
     title,
     content,
     topic: topic || '',
-    time: time || new Date().toISOString()
+    time: time || new Date().toISOString(),
+    image: image || '',
+    source: source || ''
   };
   articles.push(article);
   await writeJson(ARTICLES_FILE, articles);
 
   res.json({ success: true, id: article.id, message: '发布成功' });
+});
+
+// ---- 更新文章 ----
+app.put('/api/articles/:id', async (req, res) => {
+  const articles = await readJson(ARTICLES_FILE);
+  const id = Number(req.params.id);
+  const index = articles.findIndex(a => a.id === id);
+  if (index === -1) {
+    return res.status(404).json({ success: false, message: '文章不存在' });
+  }
+
+  const { title, content, topic, time, image, source } = req.body || {};
+  articles[index] = {
+    ...articles[index],
+    ...(title !== undefined ? { title } : {}),
+    ...(content !== undefined ? { content } : {}),
+    ...(topic !== undefined ? { topic } : {}),
+    ...(time !== undefined ? { time } : {}),
+    ...(image !== undefined ? { image } : {}),
+    ...(source !== undefined ? { source } : {})
+  };
+  await writeJson(ARTICLES_FILE, articles);
+
+  res.json({ success: true, id, message: '更新成功' });
+});
+
+// ---- 删除文章 ----
+app.delete('/api/articles/:id', async (req, res) => {
+  const articles = await readJson(ARTICLES_FILE);
+  const id = Number(req.params.id);
+  const index = articles.findIndex(a => a.id === id);
+  if (index === -1) {
+    return res.status(404).json({ success: false, message: '文章不存在' });
+  }
+
+  articles.splice(index, 1);
+  await writeJson(ARTICLES_FILE, articles);
+
+  res.json({ success: true, id, message: '删除成功' });
 });
 
 // ---- 文章列表 ----
@@ -116,6 +158,48 @@ app.get('/api/articles/:id', async (req, res) => {
     return res.status(404).json({ success: false, message: '文章不存在' });
   }
   res.json(article);
+});
+
+// ---- 获取文章评论：GET /api/articles/:id/comments ----
+app.get('/api/articles/:id/comments', async (req, res) => {
+  const articles = await readJson(ARTICLES_FILE);
+  const id = Number(req.params.id);
+  if (!articles.some(a => a.id === id)) {
+    return res.status(404).json({ success: false, message: '文章不存在' });
+  }
+  const comments = await readJson(COMMENTS_FILE);
+  const list = comments
+    .filter(c => c.articleId === id)
+    .sort((a, b) => b.id - a.id);
+  res.json(list);
+});
+
+// ---- 发表评论：POST /api/articles/:id/comments ----
+app.post('/api/articles/:id/comments', async (req, res) => {
+  const articles = await readJson(ARTICLES_FILE);
+  const id = Number(req.params.id);
+  if (!articles.some(a => a.id === id)) {
+    return res.status(404).json({ success: false, message: '文章不存在' });
+  }
+  const { username, content } = req.body || {};
+  if (!username || !content || !String(content).trim()) {
+    return res.status(400).json({ success: false, message: '评论内容不能为空' });
+  }
+
+  const comments = await readJson(COMMENTS_FILE);
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const comment = {
+    id: nextId(comments),
+    articleId: id,
+    username: String(username),
+    content: String(content).trim(),
+    time: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+  };
+  comments.push(comment);
+  await writeJson(COMMENTS_FILE, comments);
+
+  res.json({ success: true, id: comment.id, comment, message: '评论成功' });
 });
 
 // ---- 404 兜底 ----

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>创作者平台 - 相思门户网</title>
+  <meta name="description" content="相思门户网创作者平台——发布与管理你的文章。" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#eef2fb',
+              100: '#dbe3f5',
+              200: '#b6c4e8',
+              300: '#8aa0d6',
+              400: '#5a77c0',
+              500: '#35539f',
+              DEFAULT: '#1e3a8a',
+              600: '#1e3a8a',
+              700: '#173071',
+              800: '#122658',
+              900: '#0d1c42'
+            },
+            accent: {
+              DEFAULT: '#f59e0b',
+              light: '#fbbf24'
+            }
+          },
+          fontFamily: {
+            sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Hiragino Sans GB"', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            card: '0 1px 3px rgba(13,28,66,.06), 0 8px 24px rgba(13,28,66,.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { -webkit-font-smoothing: antialiased; }
+
+    /* 顶部导航栏下方悬浮热词条 */
+    .hotbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+  </style>
+  <script src="data.js"></script>
+  <script src="api.js"></script>
+  <script>
+    // 登录保护：未登录用户自动跳转回首页
+    if (localStorage.getItem('isLoggedIn') !== 'true') {
+      window.location.replace('index.html');
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+  <!-- ===== 顶部服务条（公告） ===== -->
+  <div class="bg-brand-900 text-brand-100 text-xs">
+    <div class="max-w-7xl mx-auto px-4 h-9 flex items-center justify-between gap-4">
+      <div class="flex-1 min-w-0 flex items-center">
+        <div id="announcement-bar" class="flex-1 min-w-0 flex items-center">
+          <span id="announcement-text" class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="announcement-content" class="truncate"></span>
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 shrink-0">
+        <span id="today-date" class="text-brand-200">2026年8月29日 星期六</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 头部 Logo + 搜索 + 登录 ===== -->
+  <header class="bg-white border-b border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
+      <a href="index.html" class="flex items-center gap-3 shrink-0">
+        <img src="logo.png" alt="相思门户网" title="相思门户网"
+             class="h-16 w-auto object-contain shrink-0"
+             onerror="this.style.display='none';document.getElementById('logo-text').style.display='block';" />
+        <div id="logo-text" class="leading-tight">
+          <div class="text-2xl font-bold text-accent tracking-wide">相思门户网</div>
+          <div class="text-[11px] text-slate-400 tracking-widest">本地视野 · 全球资讯</div>
+        </div>
+      </a>
+
+      <form id="search-form" class="flex-1 min-w-[220px] max-w-xl ml-auto">
+        <div class="flex items-center bg-slate-100 rounded-full border border-slate-200 px-4 py-2 focus-within:ring-2 focus-within:ring-brand-300">
+          <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input id="search-input" type="text" placeholder="搜索新闻、专题、服务"
+                 class="flex-1 bg-transparent outline-none text-sm px-3 placeholder:text-slate-400" />
+          <button type="submit" class="text-sm font-medium text-brand-600 hover:text-brand-800 px-2">搜索</button>
+        </div>
+      </form>
+
+      <div id="auth-area" class="flex items-center gap-3 shrink-0">
+        <button id="login-btn" class="px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
+          登录
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== 主导航 ===== -->
+  <nav class="bg-brand-600 text-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex items-stretch">
+      <ul id="main-nav" class="flex items-stretch overflow-x-auto">
+        <li><a href="index.html" class="nav-link">首页</a></li>
+        <li><a href="allnews.html" class="nav-link">全部</a></li>
+        <li><a href="index.html#channel-intl" class="nav-link">国际</a></li>
+        <li><a href="index.html#channel-finance" class="nav-link">财经</a></li>
+        <li><a href="index.html#channel-tech" class="nav-link">科技</a></li>
+        <li><a href="index.html#channel-culture" class="nav-link">文化</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== 创作者平台主体 ===== -->
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <h1 class="text-2xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">创作者平台</h1>
+      <span class="text-xs text-slate-400">欢迎回来，<span id="admin-username" class="text-brand-600 font-semibold">创作者</span></span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      <!-- 左栏 · 文章列表 -->
+      <section class="lg:col-span-3 bg-white rounded-xl shadow-card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">文章列表</h2>
+          <button id="refresh-btn" class="text-xs text-brand-500 hover:text-brand-700 transition">刷新</button>
+        </div>
+        <div id="article-list" class="space-y-4"></div>
+      </section>
+
+      <!-- 右栏 · 发布/编辑表单 -->
+      <section class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
+        <h2 id="form-title" class="text-lg font-bold text-slate-800 mb-4">发布文章</h2>
+        <form id="article-form" class="space-y-4" novalidate>
+          <div>
+            <label for="article-title" class="block text-sm text-slate-600 mb-1.5">标题 <span class="text-red-500">*</span></label>
+            <input id="article-title" type="text" placeholder="请输入文章标题"
+                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+          </div>
+          <div>
+            <label for="article-content" class="block text-sm text-slate-600 mb-1.5">正文 <span class="text-red-500">*</span></label>
+            <textarea id="article-content" rows="8" placeholder="请输入文章正文，多个段落用空行分隔"
+                      class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
+          </div>
+          <div>
+            <label for="article-topic" class="block text-sm text-slate-600 mb-1.5">专题</label>
+            <select id="article-topic"
+                    class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition bg-white"></select>
+          </div>
+          <div>
+            <label for="article-image" class="block text-sm text-slate-600 mb-1.5">文章配图（图片 URL，可选）</label>
+            <input id="article-image" type="url" placeholder="https://example.com/image.jpg"
+                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+          </div>
+          <div>
+            <label for="article-source" class="block text-sm text-slate-600 mb-1.5">来源（来源名称，可选）</label>
+            <input id="article-source" type="text" placeholder="留空则显示：相思门户网"
+                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+          </div>
+          <p id="form-message" class="text-xs min-h-[18px] leading-relaxed"></p>
+          <div class="flex gap-3">
+            <button type="submit" id="submit-btn" class="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发布文章</button>
+            <button type="button" id="cancel-edit-btn" class="hidden px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">取消编辑</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===== 底部 ===== -->
+  <footer class="bg-brand-800 text-brand-100">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
+        <span class="text-brand-100">关于我们</span>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <span class="text-brand-100">联系方式</span>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <span class="text-brand-100">版权声明</span>
+        <span class="h-4 w-px bg-brand-600"></span>
+        <span class="text-brand-100">隐私政策</span>
+      </div>
+    </div>
+    <div class="bg-brand-900">
+      <div class="max-w-7xl mx-auto px-4 py-5 text-center">
+        <div class="text-base font-semibold text-white tracking-widest">新闻立网 · 服务生活</div>
+        <p class="mt-2 text-xs text-brand-300/80">© <span id="copyright-year">2026</span> 相思门户网 · 版权所有 · 备案号：粤ICP备00000000号</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ----- 今日日期 -----
+    const dateEl = document.getElementById('today-date');
+    const week = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    const now = new Date();
+    if (dateEl) {
+      dateEl.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${week[now.getDay()]}`;
+    }
+
+    // ----- 版权年份自动更新 -----
+    const copyrightYearEl = document.getElementById('copyright-year');
+    if (copyrightYearEl) {
+      copyrightYearEl.textContent = now.getFullYear();
+    }
+
+    // ----- 顶部公告（仅显示第一条，居左） -----
+    const announcementContent = document.getElementById('announcement-content');
+    if (announcementContent && announcements && announcements.length > 0) {
+      announcementContent.textContent = announcements[0];
+    }
+
+    // ----- 登录状态（仅登录用户可访问本页） -----
+    const authArea = document.getElementById('auth-area');
+    const adminUsernameEl = document.getElementById('admin-username');
+    const currentUsername = localStorage.getItem('username') || '';
+    if (adminUsernameEl) adminUsernameEl.textContent = currentUsername;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function updateAuthUI() {
+      if (!authArea) return;
+      const username = localStorage.getItem('username') || '';
+      authArea.innerHTML = `
+        <span class="text-sm font-semibold text-slate-700">${escapeHtml(username)}</span>
+        <button id="logout-btn" class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">退出</button>
+      `;
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('username');
+        localStorage.removeItem('isLoggedIn');
+        window.location.replace('index.html');
+      });
+    }
+    updateAuthUI();
+
+    // ----- 搜索（模拟） -----
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('search-input').value.trim();
+      if (q) alert(`正在搜索：“${q}”`);
+    });
+
+    // ----- 创作者平台：文章列表与表单 -----
+    const articleListEl = document.getElementById('article-list');
+    const form = document.getElementById('article-form');
+    const titleInput = document.getElementById('article-title');
+    const contentInput = document.getElementById('article-content');
+    const topicSelect = document.getElementById('article-topic');
+    const imageInput = document.getElementById('article-image');
+    const sourceInput = document.getElementById('article-source');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const formTitleEl = document.getElementById('form-title');
+    const formMessageEl = document.getElementById('form-message');
+    const refreshBtn = document.getElementById('refresh-btn');
+    let editingId = null;
+
+    function formatNow() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function showFormMessage(text, type) {
+      if (!formMessageEl) return;
+      formMessageEl.textContent = text;
+      formMessageEl.className = 'text-xs min-h-[18px] leading-relaxed ' +
+        (type === 'success' ? 'text-green-600' : (type === 'error' ? 'text-red-500' : ''));
+    }
+
+    function setFormMode(mode) {
+      const isEdit = mode === 'edit';
+      submitBtn.textContent = isEdit ? '更新文章' : '发布文章';
+      formTitleEl.textContent = isEdit ? '编辑文章' : '发布文章';
+      cancelEditBtn.classList.toggle('hidden', !isEdit);
+    }
+
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      topicSelect.value = '';
+      setFormMode('create');
+      showFormMessage('', '');
+    }
+
+    function fillForm(article) {
+      editingId = article.id;
+      titleInput.value = article.title || '';
+      contentInput.value = Array.isArray(article.content) ? article.content.join('\n\n') : String(article.content || '');
+      topicSelect.value = article.topic || '';
+      imageInput.value = article.image || '';
+      sourceInput.value = article.source || '';
+      setFormMode('edit');
+      showFormMessage('', '');
+      form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function statusLabel(article) {
+      return article.status || '已发布';
+    }
+
+    function renderArticles(list) {
+      if (!articleListEl) return;
+      if (!list || !list.length) {
+        articleListEl.innerHTML = '<div class="py-16 text-center text-sm text-slate-400">暂无文章，开始创作吧！</div>';
+        return;
+      }
+      const sorted = list.slice().sort((a, b) => b.id - a.id);
+      articleListEl.innerHTML = sorted.map(a => `
+        <div class="border border-slate-100 rounded-xl p-4 hover:shadow-card transition">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '未分类'}</span>
+                <span>${a.time || ''}</span>
+                <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
+              </div>
+              <h3 class="mt-1.5 text-sm font-bold text-slate-800 truncate">${a.title}</h3>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
+              <button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      articleListEl.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const article = sorted.find(x => x.id === Number(btn.dataset.id));
+          if (article) fillForm(article);
+        });
+      });
+      articleListEl.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.dataset.id);
+          if (!confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
+          try {
+            await api.deleteArticle(id);
+            showFormMessage('删除成功', 'success');
+            if (editingId === id) resetForm();
+            await loadArticles();
+          } catch (err) {
+            showFormMessage(err.message || '删除失败，请稍后重试', 'error');
+          }
+        });
+      });
+    }
+
+    async function loadArticles() {
+      if (!articleListEl) return;
+      articleListEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">加载中...</div>';
+      try {
+        const list = await api.getArticles();
+        renderArticles(list || []);
+      } catch (err) {
+        console.error('文章列表加载失败：', err);
+        articleListEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">文章加载失败，请稍后重试</div>';
+      }
+    }
+
+    // 专题下拉（来自 data.js hotKeywords）；"无" 表示不属于任何专题
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = '无';
+    topicSelect.appendChild(noneOption);
+    hotKeywords.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      topicSelect.appendChild(opt);
+    });
+    topicSelect.value = '';
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+      const topic = topicSelect.value;
+      const image = imageInput.value.trim();
+      const source = sourceInput.value.trim();
+      if (!title) { showFormMessage('标题不能为空', 'error'); return; }
+      if (!content) { showFormMessage('正文不能为空', 'error'); return; }
+      const contentParagraphs = content.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = editingId !== null ? '更新中...' : '发布中...';
+      try {
+        if (editingId !== null) {
+          await api.updateArticle(editingId, { title, content: contentParagraphs, topic, image, source });
+          showFormMessage('文章更新成功', 'success');
+        } else {
+          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source);
+          showFormMessage('文章发布成功', 'success');
+        }
+        resetForm();
+        await loadArticles();
+      } catch (err) {
+        showFormMessage(err.message || '操作失败，请稍后重试', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = editingId !== null ? '更新文章' : '发布文章';
+      }
+    });
+
+    cancelEditBtn.addEventListener('click', resetForm);
+    refreshBtn.addEventListener('click', loadArticles);
+
+    // 初始化
+    loadArticles();
+  </script>
+
+  <style>
+    .nav-link {
+      display: flex;
+      align-items: center;
+      height: 52px;
+      padding: 0 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: rgba(255,255,255,.85);
+      transition: background .2s, color .2s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.12); color: #fff; }
+  </style>
+</body>
+</html>

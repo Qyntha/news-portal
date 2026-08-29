@@ -52,6 +52,7 @@
   </style>
   <script src="data.js"></script>
   <script src="api.js"></script>
+  <script src="auth.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 
@@ -100,10 +101,8 @@
         </div>
       </form>
 
-      <!-- 登录 -->
-      <button class="shrink-0 px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
-        登录
-      </button>
+      <!-- 登录 / 用户区 -->
+      <div id="auth-area" class="flex items-center gap-3 shrink-0"></div>
     </div>
   </header>
 
@@ -119,7 +118,7 @@
         <li><a href="allnews.html" class="nav-link">全部</a></li>
       </ul>
       <div class="ml-auto flex items-center gap-3">
-        <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
+        <button data-auth="register" class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
           注册
         </button>
       </div>
@@ -210,6 +209,7 @@
     const idParam = params.get('id');
     const id = Number(idParam);
     const container = document.getElementById('article-container');
+    let currentArticleId = null;
 
     function toParagraphs(content) {
       if (Array.isArray(content)) return content;
@@ -219,6 +219,7 @@
     function renderArticle(article) {
       if (!container) return;
       document.title = `${article.title} - 相思门户网`;
+      currentArticleId = article.id;
       container.innerHTML = `
         <nav class="text-xs text-slate-400 mb-6">
           <a href="index.html" class="hover:text-brand-600 transition">首页</a>
@@ -228,11 +229,17 @@
         <h1 class="text-3xl md:text-4xl font-bold text-slate-900 leading-snug">${article.title}</h1>
         <div class="mt-4 flex items-center gap-4 text-xs text-slate-400">
           <span>发布时间：${article.time || ''}</span>
-          <span>来源：相思门户网</span>
+          <span>来源：${article.source || '相思门户网'}</span>
         </div>
+        ${article.image ? `<img src="${article.image}" alt="${article.title}" onerror="this.style.display='none'" class="w-full h-auto rounded-xl my-6" />` : ''}
         <hr class="my-6 border-slate-100" />
         <div class="space-y-5 text-[15px] leading-7 text-slate-700">
           ${toParagraphs(article.content).map(p => `<p>${p}</p>`).join('')}
+        </div>
+        <div class="mt-10 pt-6 border-t border-slate-100">
+          <h2 class="text-lg font-bold text-slate-800 mb-4">评论 <span id="comment-count" class="text-sm text-slate-400 font-normal"></span></h2>
+          <div id="comment-list" class="space-y-4"></div>
+          <div id="comment-form-area" class="mt-6"></div>
         </div>
         <div class="mt-10 pt-6 border-t border-slate-100 flex items-center justify-between">
           <a href="index.html" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition">
@@ -241,6 +248,7 @@
           <span class="text-xs text-slate-300">责任编辑：相思门户网</span>
         </div>
       `;
+      initComments(article.id);
     }
 
     function renderNotFound() {
@@ -257,6 +265,103 @@
         </div>
       `;
     }
+
+    // ----- 评论 -----
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function initComments(articleId) {
+      currentArticleId = articleId;
+      loadComments();
+      renderCommentForm();
+    }
+
+    async function loadComments() {
+      const listEl = document.getElementById('comment-list');
+      const countEl = document.getElementById('comment-count');
+      if (!listEl || currentArticleId == null) return;
+      try {
+        const comments = await api.getComments(currentArticleId);
+        if (countEl) countEl.textContent = `${comments.length} 条`;
+        if (!comments.length) {
+          listEl.innerHTML = '<p class="text-sm text-slate-400">暂无评论，快来抢沙发～</p>';
+          return;
+        }
+        listEl.innerHTML = comments.map(c => `
+          <div class="flex gap-3">
+            <div class="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold shrink-0">${escapeHtml((c.username || '用').slice(0, 1))}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="font-semibold text-slate-700">${escapeHtml(c.username)}</span>
+                <span class="text-xs text-slate-400">${escapeHtml(c.time || '')}</span>
+              </div>
+              <p class="mt-1 text-sm text-slate-600 leading-relaxed break-words">${escapeHtml(c.content)}</p>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        listEl.innerHTML = `<p class="text-sm text-slate-400">评论加载失败：${escapeHtml(err.message || '请稍后重试')}</p>`;
+      }
+    }
+
+    function renderCommentForm() {
+      const area = document.getElementById('comment-form-area');
+      if (!area) return;
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const username = localStorage.getItem('username') || '';
+      if (!isLoggedIn) {
+        area.innerHTML = `
+          <div class="bg-slate-50 rounded-xl p-5 text-center">
+            <p class="text-sm text-slate-500 mb-3">登录后即可参与评论</p>
+            <button data-auth="login" class="px-5 py-2 rounded-full text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">立即登录</button>
+          </div>
+        `;
+        return;
+      }
+      area.innerHTML = `
+        <div class="bg-slate-50 rounded-xl p-5">
+          <p class="text-xs text-slate-400 mb-2">评论身份：<span class="text-brand-600 font-semibold">${escapeHtml(username)}</span></p>
+          <textarea id="comment-input" rows="3" placeholder="写下你的看法…"
+                    class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
+          <div class="mt-3 flex items-center justify-between gap-3">
+            <p id="comment-error" class="text-xs text-red-500 min-h-[16px] leading-relaxed"></p>
+            <button id="comment-submit" class="px-5 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发表评论</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('comment-submit').addEventListener('click', submitComment);
+    }
+
+    async function submitComment() {
+      const input = document.getElementById('comment-input');
+      const errEl = document.getElementById('comment-error');
+      const username = localStorage.getItem('username') || '';
+      const content = input.value.trim();
+      if (!content) {
+        if (errEl) errEl.textContent = '评论内容不能为空';
+        return;
+      }
+      const btn = document.getElementById('comment-submit');
+      btn.disabled = true;
+      btn.textContent = '发布中...';
+      try {
+        await api.addComment(currentArticleId, username, content);
+        input.value = '';
+        if (errEl) errEl.textContent = '';
+        await loadComments();
+      } catch (err) {
+        if (errEl) errEl.textContent = err.message || '评论失败，请稍后重试';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '发表评论';
+      }
+    }
+
+    // 登录/退出后刷新评论表单状态（auth.js 会派发 authchange 事件）
+    document.addEventListener('authchange', () => {
+      if (currentArticleId != null) renderCommentForm();
+    });
 
     if (idParam === null || idParam.trim() === '' || !Number.isInteger(id)) {
       renderNotFound();

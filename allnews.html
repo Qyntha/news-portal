@@ -52,6 +52,7 @@
   </style>
   <script src="data.js"></script>
   <script src="api.js"></script>
+  <script src="auth.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 
@@ -100,10 +101,8 @@
         </div>
       </form>
 
-      <!-- 登录 -->
-      <button class="shrink-0 px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
-        登录
-      </button>
+      <!-- 登录 / 用户区 -->
+      <div id="auth-area" class="flex items-center gap-3 shrink-0"></div>
     </div>
   </header>
 
@@ -119,7 +118,7 @@
         <li><a href="index.html#channel-culture" class="nav-link">文化</a></li>
       </ul>
       <div class="ml-auto flex items-center gap-3">
-        <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
+        <button data-auth="register" class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
           注册
         </button>
       </div>

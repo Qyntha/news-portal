@@ -52,12 +52,36 @@ function getArticle(id) {
   return request(`/api/articles/${id}`);
 }
 
+// 获取文章评论：GET /api/articles/:id/comments
+function getComments(articleId) {
+  return request(`/api/articles/${articleId}/comments`);
+}
+
+// 发表评论：POST /api/articles/:id/comments
+function addComment(articleId, username, content) {
+  return postJSON(`/api/articles/${articleId}/comments`, { username, content });
+}
+
 // 发布文章：POST /api/articles
-function createArticle(title, content, topic, time) {
-  return postJSON('/api/articles', { title, content, topic, time });
+function createArticle(title, content, topic, time, image, source) {
+  return postJSON('/api/articles', { title, content, topic, time, image, source });
+}
+
+// 更新文章：PUT /api/articles/:id
+function updateArticle(id, data) {
+  return request(`/api/articles/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+// 删除文章：DELETE /api/articles/:id
+function deleteArticle(id) {
+  return request(`/api/articles/${id}`, { method: 'DELETE' });
 }
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getArticle, createArticle };
+  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle };
 }

@@ -126,10 +126,12 @@
         </div>
       </form>
 
-      <!-- 登录 -->
-      <button class="shrink-0 px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
-        登录
-      </button>
+      <!-- 登录 / 注册入口 -->
+      <div id="auth-area" class="flex items-center gap-3 shrink-0">
+        <button id="login-btn" class="px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">
+          登录
+        </button>
+      </div>
     </div>
   </header>
 
@@ -145,7 +147,7 @@
         <li><a href="./allnews.html" class="nav-link">全部</a></li>
       </ul>
       <div class="ml-auto flex items-center gap-3">
-        <button class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
+        <button id="register-btn" class="px-5 py-2 rounded-full text-sm font-semibold bg-white text-brand-600 hover:bg-brand-50 transition">
           注册
         </button>
       </div>
@@ -177,7 +179,7 @@
           <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">今日头条</h2>
         </div>
 
-        <a id="cover-news" href="article.html?id=0" class="group relative block rounded-xl overflow-hidden shadow-card"></a>
+        <a id="cover-news" href="#" class="group relative block rounded-xl overflow-hidden shadow-card"></a>
       </div>
 
       <!-- 右 · 最新要闻 -->
@@ -260,6 +262,57 @@
     </button>
   </div>
 
+  <!-- ===== 登录 / 注册弹窗 ===== -->
+  <div id="auth-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" data-close-modal></div>
+    <div class="relative w-full max-w-[420px] mx-4 bg-white rounded-2xl shadow-2xl p-8">
+      <button id="auth-close" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition" aria-label="关闭">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+
+      <h3 class="text-xl font-bold text-slate-800 mb-5">用户中心</h3>
+      <div class="flex gap-2 p-1 bg-slate-100 rounded-full mb-6">
+        <button id="tab-login" class="auth-tab active-tab flex-1 py-2 rounded-full text-sm font-semibold">登录</button>
+        <button id="tab-register" class="auth-tab flex-1 py-2 rounded-full text-sm font-semibold">注册</button>
+      </div>
+
+      <form id="login-form" class="space-y-4" novalidate>
+        <div>
+          <label for="login-username" class="block text-sm text-slate-600 mb-1.5">用户名</label>
+          <input id="login-username" type="text" autocomplete="username" placeholder="请输入用户名（不少于 3 个字符）"
+                 class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm text-slate-600 mb-1.5">密码</label>
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="请输入密码（不少于 6 个字符）"
+                 class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <p id="login-error" class="text-xs text-red-500 min-h-[18px] leading-relaxed"></p>
+        <button type="submit" class="w-full py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">登 录</button>
+      </form>
+
+      <form id="register-form" class="space-y-4 hidden" novalidate>
+        <div>
+          <label for="register-username" class="block text-sm text-slate-600 mb-1.5">用户名</label>
+          <input id="register-username" type="text" autocomplete="username" placeholder="请输入用户名（不少于 3 个字符）"
+                 class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <div>
+          <label for="register-password" class="block text-sm text-slate-600 mb-1.5">密码</label>
+          <input id="register-password" type="password" autocomplete="new-password" placeholder="请输入密码（不少于 6 个字符）"
+                 class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <div>
+          <label for="register-confirm" class="block text-sm text-slate-600 mb-1.5">确认密码</label>
+          <input id="register-confirm" type="password" autocomplete="new-password" placeholder="请再次输入密码"
+                 class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <p id="register-error" class="text-xs text-red-500 min-h-[18px] leading-relaxed"></p>
+        <button type="submit" class="w-full py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">注 册</button>
+      </form>
+    </div>
+  </div>
+
   <script>
     // ----- 今日日期 -----
     const dateEl = document.getElementById('today-date');
@@ -320,7 +373,7 @@
     function renderTopCards(list) {
       if (!topCardsWrap) return;
       if (!list || !list.length) {
-        topCardsWrap.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">暂无头条</div>';
+        topCardsWrap.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">暂无文章</div>';
         return;
       }
       topCardsWrap.innerHTML = list.slice(0, 3).map((card, i) => `
@@ -341,26 +394,37 @@
       `).join('');
     }
 
-    // ----- 封面头条渲染 -----
+    // ----- 封面头条渲染（跟随最新文章） -----
     const coverNewsEl = document.getElementById('cover-news');
-    if (coverNewsEl) {
+    function renderCoverNews(article) {
+      if (!coverNewsEl) return;
+      if (!article) {
+        coverNewsEl.innerHTML = '';
+        coverNewsEl.removeAttribute('href');
+        coverNewsEl.classList.add('bg-slate-100');
+        return;
+      }
+      const desc = excerpt(article.content, 30) || article.topic || '点击阅读全文';
+      coverNewsEl.classList.remove('bg-slate-100');
+      coverNewsEl.setAttribute('href', `article.html?id=${article.id}`);
       coverNewsEl.innerHTML = `
-        <img src="${coverNews.image}" alt="今日重点" class="w-full h-[420px] object-cover group-hover:scale-105 transition duration-700" loading="lazy" />
+        <img src="${cardImage(article, 1280, 720)}" alt="${article.title}" class="w-full h-[420px] object-cover group-hover:scale-105 transition duration-700" loading="lazy" />
         <span class="absolute top-5 right-5 px-3 py-1 bg-yellow-400 text-brand-900 text-xs font-bold rounded-sm shadow">封面头条</span>
         <div class="absolute inset-0 hero-mask"></div>
         <div class="absolute bottom-0 left-0 right-0 p-6">
-          <h3 class="text-2xl md:text-3xl font-bold text-white leading-snug group-hover:text-accent-light transition">${coverNews.title}</h3>
-          <p class="mt-2 text-sm text-white/85">${coverNews.description}</p>
+          <h3 class="text-2xl md:text-3xl font-bold text-white leading-snug group-hover:text-accent-light transition">${article.title}</h3>
+          <p class="mt-2 text-sm text-white/85">${desc}</p>
         </div>
       `;
     }
+    if (coverNewsEl) coverNewsEl.innerHTML = '加载中...';
 
     // ----- 最新要闻渲染（后端 API） -----
     const latestNewsList = document.getElementById('latest-news');
     function renderLatestNews(list) {
       if (!latestNewsList) return;
       if (!list || !list.length) {
-        latestNewsList.innerHTML = '<li class="py-3 text-sm text-slate-400">暂无要闻</li>';
+        latestNewsList.innerHTML = '<li class="py-3 text-sm text-slate-400">暂无文章</li>';
         return;
       }
       latestNewsList.innerHTML = list.slice(0, 7).map(n => `
@@ -378,7 +442,7 @@
     function renderChannelCards(list) {
       if (!channelCardsWrap) return;
       if (!list || !list.length) {
-        channelCardsWrap.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">暂无频道内容</div>';
+        channelCardsWrap.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">暂无文章</div>';
         return;
       }
       channelCardsWrap.innerHTML = list.slice(0, 4).map((channel, i) => `
@@ -404,6 +468,8 @@
     api.getArticles()
       .then(list => {
         const sorted = (list || []).slice().sort((a, b) => b.id - a.id);
+        // 封面头条完全跟随最新发布的文章：标题、配图、描述、链接一致
+        renderCoverNews(sorted[0]);
         renderLatestNews(sorted);
         renderTopCards(sorted);
         renderChannelCards(sorted);
@@ -463,6 +529,138 @@
       const q = document.getElementById('search-input').value.trim();
       if (q) alert(`正在搜索：“${q}”`);
     });
+
+    // ----- 登录 / 注册弹窗与状态管理 -----
+    const authModal = document.getElementById('auth-modal');
+    const authArea = document.getElementById('auth-area');
+    const registerNavBtn = document.getElementById('register-btn');
+    const authClose = document.getElementById('auth-close');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginErrorEl = document.getElementById('login-error');
+    const registerErrorEl = document.getElementById('register-error');
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function switchAuthTab(tab) {
+      const isLogin = tab === 'login';
+      tabLogin.classList.toggle('active-tab', isLogin);
+      tabRegister.classList.toggle('active-tab', !isLogin);
+      loginForm.classList.toggle('hidden', !isLogin);
+      registerForm.classList.toggle('hidden', isLogin);
+      loginErrorEl.textContent = '';
+      registerErrorEl.textContent = '';
+    }
+
+    function openAuthModal(tab) {
+      if (!authModal) return;
+      switchAuthTab(tab === 'register' ? 'register' : 'login');
+      authModal.classList.remove('hidden');
+      authModal.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAuthModal() {
+      if (!authModal) return;
+      authModal.classList.add('hidden');
+      authModal.classList.remove('flex');
+      document.body.style.overflow = '';
+    }
+
+    function updateAuthUI() {
+      if (!authArea) return;
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const username = localStorage.getItem('username') || '';
+      if (isLoggedIn) {
+        authArea.innerHTML = `
+          <a href="admin.html" class="px-4 py-2 rounded-full text-sm font-semibold text-brand-600 border border-brand-600 hover:bg-brand-50 transition">创作者平台</a>
+          <span class="text-sm font-semibold text-slate-700">${escapeHtml(username)}</span>
+          <button id="logout-btn" class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">退出</button>
+        `;
+        document.getElementById('logout-btn').addEventListener('click', logout);
+      } else {
+        authArea.innerHTML = `
+          <button id="login-btn" class="px-6 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 transition shadow-sm">登录</button>
+        `;
+        document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('username');
+      localStorage.removeItem('isLoggedIn');
+      updateAuthUI();
+    }
+
+    tabLogin.addEventListener('click', () => switchAuthTab('login'));
+    tabRegister.addEventListener('click', () => switchAuthTab('register'));
+    authClose.addEventListener('click', closeAuthModal);
+    document.querySelectorAll('[data-close-modal]').forEach(el => el.addEventListener('click', closeAuthModal));
+    if (registerNavBtn) registerNavBtn.addEventListener('click', () => openAuthModal('register'));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAuthModal(); });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginErrorEl.textContent = '';
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (username.length < 3) { loginErrorEl.textContent = '用户名不少于 3 个字符'; return; }
+      if (password.length < 6) { loginErrorEl.textContent = '密码不少于 6 个字符'; return; }
+      try {
+        const data = await api.login(username, password);
+        if (data && data.success) {
+          localStorage.setItem('username', data.username || username);
+          localStorage.setItem('isLoggedIn', 'true');
+          loginForm.reset();
+          updateAuthUI();
+          closeAuthModal();
+        } else {
+          loginErrorEl.textContent = (data && data.message) || '登录失败，请稍后重试';
+        }
+      } catch (err) {
+        loginErrorEl.textContent = err.message || '登录失败，请稍后重试';
+      }
+    });
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      registerErrorEl.textContent = '';
+      const username = document.getElementById('register-username').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm').value;
+      if (username.length < 3) { registerErrorEl.textContent = '用户名不少于 3 个字符'; return; }
+      if (password.length < 6) { registerErrorEl.textContent = '密码不少于 6 个字符'; return; }
+      if (password !== confirmPassword) { registerErrorEl.textContent = '两次输入的密码不一致'; return; }
+      try {
+        const data = await api.register(username, password);
+        if (data && data.success) {
+          // 注册成功后自动登录
+          const loginData = await api.login(username, password);
+          if (loginData && loginData.success) {
+            localStorage.setItem('username', loginData.username || username);
+            localStorage.setItem('isLoggedIn', 'true');
+            registerForm.reset();
+            updateAuthUI();
+            closeAuthModal();
+          } else {
+            switchAuthTab('login');
+            document.getElementById('login-username').value = username;
+            loginErrorEl.textContent = (loginData && loginData.message) || '注册成功，请手动登录';
+          }
+        } else {
+          registerErrorEl.textContent = (data && data.message) || '注册失败，请稍后重试';
+        }
+      } catch (err) {
+        registerErrorEl.textContent = err.message || '注册失败，请稍后重试';
+      }
+    });
+
+    // 页面加载时恢复登录状态
+    updateAuthUI();
   </script>
 
   <style>
@@ -479,6 +677,16 @@
     }
     .nav-link:hover { background: rgba(255,255,255,.12); color: #fff; }
     .nav-link.active { background: #fff; color: #1e3a8a; font-weight: 700; }
+
+    /* 登录/注册 Tab */
+    .auth-tab {
+      color: #64748b;
+      transition: background .2s, color .2s;
+    }
+    .auth-tab.active-tab {
+      background: #1e3a8a;
+      color: #fff;
+    }
   </style>
 </body>
 </html>
