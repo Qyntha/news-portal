@@ -1,40 +1,15 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs/promises');
-const path = require('path');
+const db = require('./database.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-const ARTICLES_FILE = path.join(__dirname, 'data', 'articles.json');
-const COMMENTS_FILE = path.join(__dirname, 'data', 'comments.json');
 
 // 跨域支持
 app.use(cors());
 
 // JSON 请求体解析
 app.use(express.json());
-
-// ---- 数据文件读写工具 ----
-async function readJson(file) {
-  try {
-    const raw = await fs.readFile(file, 'utf8');
-    return JSON.parse(raw);
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
-}
-
-async function writeJson(file, data) {
-  await fs.writeFile(file, JSON.stringify(data, null, 2), 'utf8');
-}
-
-// 自增 id：取现有最大 id + 1，空列表从 1 开始
-function nextId(list) {
-  return list.length ? Math.max(...list.map(item => item.id)) + 1 : 1;
-}
 
 // 根路由（健康检查）
 app.get('/', (req, res) => {
@@ -52,17 +27,18 @@ app.post('/api/register', async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
-
-  const users = await readJson(USERS_FILE);
-  if (users.some(u => u.username === username)) {
-    return res.json({ success: false, message: '用户名已存在' });
+  try {
+    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    if (existing) {
+      return res.json({ success: false, message: '用户名已存在' });
+    }
+    const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+    const info = stmt.run(username, password);
+    res.json({ success: true, message: '注册成功', id: info.lastInsertRowid });
+  } catch (error) {
+    console.error('注册失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-
-  const user = { id: nextId(users), username, password };
-  users.push(user);
-  await writeJson(USERS_FILE, users);
-
-  res.json({ success: true, message: '注册成功' });
 });
 
 // ---- 用户登录 ----
@@ -71,135 +47,156 @@ app.post('/api/login', async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
-
-  const users = await readJson(USERS_FILE);
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) {
-    return res.json({ success: false, message: '用户名或密码错误' });
+  try {
+    const user = db.prepare('SELECT username FROM users WHERE username = ? AND password = ?').get(username, password);
+    if (!user) {
+      return res.json({ success: false, message: '用户名或密码错误' });
+    }
+    res.json({ success: true, username: user.username, message: '登录成功' });
+  } catch (error) {
+    console.error('登录失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-
-  res.json({ success: true, username: user.username, message: '登录成功' });
 });
 
-// ---- 文章发布 ----
+// ---- 发布文章 ----
 app.post('/api/articles', async (req, res) => {
   const { title, content, topic, time, image, source } = req.body || {};
   if (!title || !content) {
     return res.status(400).json({ success: false, message: '标题和内容不能为空' });
   }
-
-  const articles = await readJson(ARTICLES_FILE);
-  const article = {
-    id: nextId(articles),
-    title,
-    content,
-    topic: topic || '',
-    time: time || new Date().toISOString(),
-    image: image || '',
-    source: source || ''
-  };
-  articles.push(article);
-  await writeJson(ARTICLES_FILE, articles);
-
-  res.json({ success: true, id: article.id, message: '发布成功' });
-});
-
-// ---- 更新文章 ----
-app.put('/api/articles/:id', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  const id = Number(req.params.id);
-  const index = articles.findIndex(a => a.id === id);
-  if (index === -1) {
-    return res.status(404).json({ success: false, message: '文章不存在' });
+  try {
+    const contentStr = JSON.stringify(content);
+    const stmt = db.prepare(
+      'INSERT INTO articles (title, content, topic, time, image, source) VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    const info = stmt.run(title, contentStr, topic || '', time || new Date().toISOString(), image || '', source || '');
+    res.json({ success: true, id: info.lastInsertRowid, message: '发布成功' });
+  } catch (error) {
+    console.error('发布文章失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-
-  const { title, content, topic, time, image, source } = req.body || {};
-  articles[index] = {
-    ...articles[index],
-    ...(title !== undefined ? { title } : {}),
-    ...(content !== undefined ? { content } : {}),
-    ...(topic !== undefined ? { topic } : {}),
-    ...(time !== undefined ? { time } : {}),
-    ...(image !== undefined ? { image } : {}),
-    ...(source !== undefined ? { source } : {})
-  };
-  await writeJson(ARTICLES_FILE, articles);
-
-  res.json({ success: true, id, message: '更新成功' });
-});
-
-// ---- 删除文章 ----
-app.delete('/api/articles/:id', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  const id = Number(req.params.id);
-  const index = articles.findIndex(a => a.id === id);
-  if (index === -1) {
-    return res.status(404).json({ success: false, message: '文章不存在' });
-  }
-
-  articles.splice(index, 1);
-  await writeJson(ARTICLES_FILE, articles);
-
-  res.json({ success: true, id, message: '删除成功' });
 });
 
 // ---- 文章列表 ----
 app.get('/api/articles', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  res.json(articles);
+  try {
+    const articles = db.prepare('SELECT * FROM articles ORDER BY id DESC').all();
+    // 将 content 从 JSON 字符串还原为数组
+    const result = articles.map(a => ({
+      ...a,
+      content: JSON.parse(a.content)
+    }));
+    res.json(result);
+  } catch (error) {
+    console.error('获取文章列表失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
 });
 
 // ---- 单篇文章 ----
 app.get('/api/articles/:id', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  const id = Number(req.params.id);
-  const article = articles.find(a => a.id === id);
-  if (!article) {
-    return res.status(404).json({ success: false, message: '文章不存在' });
+  try {
+    const id = Number(req.params.id);
+    const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(id);
+    if (!article) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    article.content = JSON.parse(article.content);
+    res.json(article);
+  } catch (error) {
+    console.error('获取文章失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-  res.json(article);
 });
 
-// ---- 获取文章评论：GET /api/articles/:id/comments ----
+// ---- 更新文章 ----
+app.put('/api/articles/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { title, content, topic, time, image, source } = req.body || {};
+    const existing = db.prepare('SELECT id FROM articles WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    // 构建动态更新语句
+    const updates = [];
+    const values = [];
+    if (title !== undefined) { updates.push('title = ?'); values.push(title); }
+    if (content !== undefined) { updates.push('content = ?'); values.push(JSON.stringify(content)); }
+    if (topic !== undefined) { updates.push('topic = ?'); values.push(topic); }
+    if (time !== undefined) { updates.push('time = ?'); values.push(time); }
+    if (image !== undefined) { updates.push('image = ?'); values.push(image); }
+    if (source !== undefined) { updates.push('source = ?'); values.push(source); }
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: '没有提供任何更新字段' });
+    }
+    values.push(id);
+    const stmt = db.prepare(`UPDATE articles SET ${updates.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+    res.json({ success: true, id, message: '更新成功' });
+  } catch (error) {
+    console.error('更新文章失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 删除文章 ----
+app.delete('/api/articles/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const existing = db.prepare('SELECT id FROM articles WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    // 由于外键 ON DELETE CASCADE，评论会自动删除
+    db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+    res.json({ success: true, id, message: '删除成功' });
+  } catch (error) {
+    console.error('删除文章失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 获取文章评论 ----
 app.get('/api/articles/:id/comments', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  const id = Number(req.params.id);
-  if (!articles.some(a => a.id === id)) {
-    return res.status(404).json({ success: false, message: '文章不存在' });
+  try {
+    const articleId = Number(req.params.id);
+    const existing = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    const comments = db.prepare('SELECT * FROM comments WHERE articleId = ? ORDER BY id DESC').all(articleId);
+    res.json(comments);
+  } catch (error) {
+    console.error('获取评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-  const comments = await readJson(COMMENTS_FILE);
-  const list = comments
-    .filter(c => c.articleId === id)
-    .sort((a, b) => b.id - a.id);
-  res.json(list);
 });
 
-// ---- 发表评论：POST /api/articles/:id/comments ----
+// ---- 发表评论 ----
 app.post('/api/articles/:id/comments', async (req, res) => {
-  const articles = await readJson(ARTICLES_FILE);
-  const id = Number(req.params.id);
-  if (!articles.some(a => a.id === id)) {
-    return res.status(404).json({ success: false, message: '文章不存在' });
+  try {
+    const articleId = Number(req.params.id);
+    const existing = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    const { username, content } = req.body || {};
+    if (!username || !content || !String(content).trim()) {
+      return res.status(400).json({ success: false, message: '评论内容不能为空' });
+    }
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const time = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const stmt = db.prepare('INSERT INTO comments (articleId, username, content, time) VALUES (?, ?, ?, ?)');
+    const info = stmt.run(articleId, username, String(content).trim(), time);
+    const newComment = db.prepare('SELECT * FROM comments WHERE id = ?').get(info.lastInsertRowid);
+    res.json({ success: true, id: info.lastInsertRowid, comment: newComment, message: '评论成功' });
+  } catch (error) {
+    console.error('发表评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
-  const { username, content } = req.body || {};
-  if (!username || !content || !String(content).trim()) {
-    return res.status(400).json({ success: false, message: '评论内容不能为空' });
-  }
-
-  const comments = await readJson(COMMENTS_FILE);
-  const now = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const comment = {
-    id: nextId(comments),
-    articleId: id,
-    username: String(username),
-    content: String(content).trim(),
-    time: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
-  };
-  comments.push(comment);
-  await writeJson(COMMENTS_FILE, comments);
-
-  res.json({ success: true, id: comment.id, comment, message: '评论成功' });
 });
 
 // ---- 404 兜底 ----
