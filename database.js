@@ -45,6 +45,33 @@ db.exec(`
   );
 `);
 
+// ---- 兼容旧数据库：为已有表补充缺失的列（一次性迁移） ----
+let addedRoleColumn = false;
+let addedAuthorColumn = false;
+function ensureColumn(table, column, definition) {
+  const columns = db.pragma(`table_info(${table})`);
+  if (!columns.some(c => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`✅ 已为 ${table} 表补充 ${column} 字段`);
+    if (table === 'users' && column === 'role') addedRoleColumn = true;
+    if (table === 'articles' && column === 'author') addedAuthorColumn = true;
+  }
+}
+ensureColumn('users', 'role', "TEXT DEFAULT 'user'");
+ensureColumn('articles', 'author', "TEXT DEFAULT ''");
+
+// 旧库刚补 role 列：此前所有注册用户均可发布，统一恢复为管理员身份（仅迁移时执行一次）
+if (addedRoleColumn) {
+  const promoted = db.prepare("UPDATE users SET role = 'admin' WHERE username <> 'admin' AND role = 'user'").run();
+  console.log(`✅ 已为 ${promoted.changes} 名老用户设置管理员身份`);
+}
+
+// 旧库刚补 author 列：老文章作者统一设为 admin（仅迁移时执行一次）
+if (addedAuthorColumn) {
+  const authorFixed = db.prepare("UPDATE articles SET author = 'admin' WHERE author IS NULL OR author = ''").run();
+  console.log(`✅ 已为 ${authorFixed.changes} 篇老文章设置作者 admin`);
+}
+
 // ---- 初始化最高管理员 ----
 // 规则：只有用户名为 admin 的才是最高管理员（superadmin）。
 // 用户表为空（全新数据库）时自动创建 admin，保证上线后始终有超级管理员；
