@@ -52,8 +52,11 @@ app.post('/api/register', async (req, res) => {
     if (existing) {
       return res.json({ success: false, message: '用户名已存在' });
     }
-    const stmt = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)');
-    const info = stmt.run(username, password, requestedRole);
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const created_at = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const stmt = db.prepare('INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)');
+    const info = stmt.run(username, password, requestedRole, created_at);
     res.json({ success: true, message: '注册成功', id: info.lastInsertRowid });
   } catch (error) {
     console.error('注册失败:', error);
@@ -68,7 +71,7 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
   try {
-    const user = db.prepare('SELECT username, role FROM users WHERE username = ? AND password = ?').get(username, password);
+    const user = db.prepare('SELECT username, role, created_at FROM users WHERE username = ? AND password = ?').get(username, password);
     if (!user) {
       return res.json({ success: false, message: '用户名或密码错误' });
     }
@@ -77,7 +80,7 @@ app.post('/api/login', async (req, res) => {
       db.prepare("UPDATE users SET role = 'superadmin' WHERE username = 'admin'").run();
       user.role = 'superadmin';
     }
-    res.json({ success: true, username: user.username, role: user.role, message: '登录成功' });
+    res.json({ success: true, username: user.username, role: user.role, created_at: user.created_at || '', message: '登录成功' });
   } catch (error) {
     console.error('登录失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });

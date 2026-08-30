@@ -127,12 +127,8 @@
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const username = localStorage.getItem('username') || '';
     if (isLoggedIn) {
-      const role = localStorage.getItem('role') || '';
-      const creatorLink = role !== 'user'
-        ? `<a href="admin.html" class="px-4 py-2 rounded-full text-sm font-semibold text-brand-600 border border-brand-600 hover:bg-brand-50 transition">创作者平台</a>`
-        : '';
       authArea.innerHTML = `
-        ${creatorLink}
+        <a href="admin.html" class="px-4 py-2 rounded-full text-sm font-semibold text-brand-600 border border-brand-600 hover:bg-brand-50 transition">用户中心</a>
         <span class="text-sm font-semibold text-slate-700">${escapeHtml(username)}</span>
         <button id="logout-btn" class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">退出</button>
       `;
@@ -150,6 +146,7 @@
     localStorage.removeItem('username');
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('role');
+    localStorage.removeItem('created_at');
     updateAuthUI();
   }
 
@@ -183,6 +180,7 @@
           localStorage.setItem('username', data.username || username);
           localStorage.setItem('isLoggedIn', 'true');
           localStorage.setItem('role', data.role || 'user');
+          localStorage.setItem('created_at', data.created_at || '');
           loginForm.reset();
           updateAuthUI();
           closeAuthModal();
@@ -217,6 +215,7 @@
             localStorage.setItem('username', loginData.username || username);
             localStorage.setItem('isLoggedIn', 'true');
             localStorage.setItem('role', loginData.role || 'user');
+            localStorage.setItem('created_at', loginData.created_at || '');
             registerForm.reset();
             updateAuthUI();
             closeAuthModal();

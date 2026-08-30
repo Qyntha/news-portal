@@ -55,10 +55,13 @@ function ensureColumn(table, column, definition) {
     console.log(`✅ 已为 ${table} 表补充 ${column} 字段`);
     if (table === 'users' && column === 'role') addedRoleColumn = true;
     if (table === 'articles' && column === 'author') addedAuthorColumn = true;
+    return true;
   }
+  return false;
 }
 ensureColumn('users', 'role', "TEXT DEFAULT 'user'");
 ensureColumn('articles', 'author', "TEXT DEFAULT ''");
+const createdAdded = ensureColumn('users', 'created_at', "TEXT DEFAULT ''");
 
 // 旧库刚补 role 列：此前所有注册用户均可发布，统一恢复为管理员身份（仅迁移时执行一次）
 if (addedRoleColumn) {
@@ -70,6 +73,15 @@ if (addedRoleColumn) {
 if (addedAuthorColumn) {
   const authorFixed = db.prepare("UPDATE articles SET author = 'admin' WHERE author IS NULL OR author = ''").run();
   console.log(`✅ 已为 ${authorFixed.changes} 篇老文章设置作者 admin`);
+}
+
+// 旧库刚补 created_at 列：为老用户补上注册时间（以当前时间近似）
+if (createdAdded) {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const updated = db.prepare("UPDATE users SET created_at = ? WHERE created_at IS NULL OR created_at = ''").run(ts);
+  console.log(`✅ 已为 ${updated.changes} 名老用户补充注册时间`);
 }
 
 // ---- 初始化最高管理员 ----
