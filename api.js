@@ -33,8 +33,8 @@ function postJSON(path, body) {
 }
 
 // 用户注册：POST /api/register
-function register(username, password) {
-  return postJSON('/api/register', { username, password });
+function register(username, password, role) {
+  return postJSON('/api/register', { username, password, role });
 }
 
 // 用户登录：POST /api/login
@@ -63,8 +63,8 @@ function addComment(articleId, username, content) {
 }
 
 // 发布文章：POST /api/articles
-function createArticle(title, content, topic, time, image, source) {
-  return postJSON('/api/articles', { title, content, topic, time, image, source });
+function createArticle(title, content, topic, time, image, source, username) {
+  return postJSON('/api/articles', { title, content, topic, time, image, source, username });
 }
 
 // 更新文章：PUT /api/articles/:id
@@ -76,12 +76,22 @@ function updateArticle(id, data) {
   });
 }
 
-// 删除文章：DELETE /api/articles/:id
-function deleteArticle(id) {
-  return request(`/api/articles/${id}`, { method: 'DELETE' });
+// 删除文章：DELETE /api/articles/:id?username=xxx
+function deleteArticle(id, username) {
+  return request(`/api/articles/${id}?username=${encodeURIComponent(username || '')}`, { method: 'DELETE' });
+}
+
+// 获取用户列表：GET /api/admin/users?username=xxx
+function getUsers(username) {
+  return request(`/api/admin/users?username=${encodeURIComponent(username || '')}`);
+}
+
+// 设置用户角色：POST /api/admin/set-role
+function setRole(username, target, role) {
+  return postJSON('/api/admin/set-role', { username, target, role });
 }
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle };
+  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole };
 }

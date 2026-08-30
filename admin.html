@@ -53,8 +53,8 @@
   <script src="data.js"></script>
   <script src="api.js"></script>
   <script>
-    // 登录保护：未登录用户自动跳转回首页
-    if (localStorage.getItem('isLoggedIn') !== 'true') {
+    // 登录保护：未登录或普通用户自动跳转回首页（普通用户只读，无法进入创作者平台）
+    if (localStorage.getItem('isLoggedIn') !== 'true' || localStorage.getItem('role') === 'user') {
       window.location.replace('index.html');
     }
   </script>
@@ -118,10 +118,6 @@
       <ul id="main-nav" class="flex items-stretch overflow-x-auto">
         <li><a href="index.html" class="nav-link">首页</a></li>
         <li><a href="allnews.html" class="nav-link">全部</a></li>
-        <li><a href="index.html#channel-intl" class="nav-link">国际</a></li>
-        <li><a href="index.html#channel-finance" class="nav-link">财经</a></li>
-        <li><a href="index.html#channel-tech" class="nav-link">科技</a></li>
-        <li><a href="index.html#channel-culture" class="nav-link">文化</a></li>
       </ul>
     </div>
   </nav>
@@ -130,7 +126,7 @@
   <main class="max-w-7xl mx-auto px-4 py-8">
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <h1 class="text-2xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">创作者平台</h1>
-      <span class="text-xs text-slate-400">欢迎回来，<span id="admin-username" class="text-brand-600 font-semibold">创作者</span></span>
+      <span class="text-xs text-slate-400">欢迎回来，<span id="admin-username" class="text-brand-600 font-semibold">创作者</span>（<span id="admin-role" class="text-brand-600 font-semibold">-</span>）</span>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
@@ -180,6 +176,16 @@
         </form>
       </section>
     </div>
+
+    <!-- 用户管理（仅 superadmin / admin 可见） -->
+    <section id="user-manage-section" class="hidden mt-8 bg-white rounded-xl shadow-card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-slate-800">用户管理</h2>
+        <button id="user-refresh-btn" class="text-xs text-brand-500 hover:text-brand-700 transition">刷新</button>
+      </div>
+      <div id="user-manage-list" class="overflow-x-auto"></div>
+      <p id="user-manage-msg" class="mt-3 text-xs min-h-[16px] leading-relaxed"></p>
+    </section>
   </main>
 
   <!-- ===== 底部 ===== -->
@@ -227,8 +233,15 @@
     // ----- 登录状态（仅登录用户可访问本页） -----
     const authArea = document.getElementById('auth-area');
     const adminUsernameEl = document.getElementById('admin-username');
+    const adminRoleEl = document.getElementById('admin-role');
     const currentUsername = localStorage.getItem('username') || '';
+    const currentRole = localStorage.getItem('role') || '';
     if (adminUsernameEl) adminUsernameEl.textContent = currentUsername;
+
+    function roleLabel(role) {
+      return { superadmin: '超级管理员', admin: '管理员', creator: '创作者', user: '普通用户' }[role] || role || '-';
+    }
+    if (adminRoleEl) adminRoleEl.textContent = roleLabel(currentRole);
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -244,6 +257,7 @@
       document.getElementById('logout-btn').addEventListener('click', () => {
         localStorage.removeItem('username');
         localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('role');
         window.location.replace('index.html');
       });
     }
@@ -322,24 +336,30 @@
         return;
       }
       const sorted = list.slice().sort((a, b) => b.id - a.id);
-      articleListEl.innerHTML = sorted.map(a => `
-        <div class="border border-slate-100 rounded-xl p-4 hover:shadow-card transition">
-          <div class="flex items-start justify-between gap-3 flex-wrap">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
-                <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '未分类'}</span>
-                <span>${a.time || ''}</span>
-                <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
+      articleListEl.innerHTML = sorted.map(a => {
+        const canManage = currentRole === 'superadmin' || currentRole === 'admin' || a.author === currentUsername;
+        return `
+          <div class="border border-slate-100 rounded-xl p-4 hover:shadow-card transition">
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+                  <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '未分类'}</span>
+                  <span>${a.time || ''}</span>
+                  <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
+                  <span>作者：${escapeHtml(a.author || '未知')}</span>
+                </div>
+                <h3 class="mt-1.5 text-sm font-bold text-slate-800 truncate">${a.title}</h3>
               </div>
-              <h3 class="mt-1.5 text-sm font-bold text-slate-800 truncate">${a.title}</h3>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
-              <button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>
+              ${canManage ? `
+                <div class="flex items-center gap-2 shrink-0">
+                  <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
+                  <button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>
+                </div>
+              ` : '<span class="text-xs text-slate-300 shrink-0">仅作者可操作</span>'}
             </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       articleListEl.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -352,7 +372,7 @@
           const id = Number(btn.dataset.id);
           if (!confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
           try {
-            await api.deleteArticle(id);
+            await api.deleteArticle(id, currentUsername);
             showFormMessage('删除成功', 'success');
             if (editingId === id) resetForm();
             await loadArticles();
@@ -374,6 +394,100 @@
         articleListEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">文章加载失败，请稍后重试</div>';
       }
     }
+
+    // ----- 用户管理（仅 superadmin / admin 可见） -----
+    const userManageSection = document.getElementById('user-manage-section');
+    const userManageList = document.getElementById('user-manage-list');
+    const userManageMsg = document.getElementById('user-manage-msg');
+    const userRefreshBtn = document.getElementById('user-refresh-btn');
+
+    function showUserManageMsg(text, type) {
+      if (!userManageMsg) return;
+      userManageMsg.textContent = text;
+      userManageMsg.className = 'mt-3 text-xs min-h-[16px] leading-relaxed ' +
+        (type === 'success' ? 'text-green-600' : (type === 'error' ? 'text-red-500' : ''));
+    }
+
+    async function loadUsers() {
+      if (!userManageList) return;
+      userManageList.innerHTML = '<div class="py-6 text-center text-sm text-slate-400">加载中...</div>';
+      try {
+        const users = await api.getUsers(currentUsername);
+        renderUserTable(users || []);
+      } catch (err) {
+        userManageList.innerHTML = `<div class="py-6 text-center text-sm text-slate-400">用户列表加载失败：${escapeHtml(err.message || '请稍后重试')}</div>`;
+      }
+    }
+
+    function renderUserTable(users) {
+      if (!userManageList) return;
+      if (!users.length) {
+        userManageList.innerHTML = '<div class="py-6 text-center text-sm text-slate-400">暂无用户</div>';
+        return;
+      }
+      userManageList.innerHTML = `
+        <table class="w-full text-sm min-w-[520px]">
+          <thead>
+            <tr class="text-left text-slate-400 border-b border-slate-100">
+              <th class="py-2 pr-3 font-medium">用户名</th>
+              <th class="py-2 pr-3 font-medium">当前角色</th>
+              <th class="py-2 font-medium">可执行操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.map(u => `
+              <tr class="border-b border-slate-50">
+                <td class="py-2.5 pr-3 font-semibold text-slate-700">${escapeHtml(u.username)}</td>
+                <td class="py-2.5 pr-3"><span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">${escapeHtml(roleLabel(u.role))}</span></td>
+                <td class="py-2.5">${buildUserActions(u)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      userManageList.querySelectorAll('[data-set-role]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const target = btn.dataset.target;
+          const role = btn.dataset.setRole;
+          if (!confirm(`确定将用户「${target}」的角色设为「${roleLabel(role)}」吗？`)) return;
+          try {
+            await api.setRole(currentUsername, target, role);
+            showUserManageMsg(`已将「${target}」设为${roleLabel(role)}`, 'success');
+            await loadUsers();
+          } catch (err) {
+            showUserManageMsg(err.message || '操作失败，请稍后重试', 'error');
+          }
+        });
+      });
+    }
+
+    function buildUserActions(u) {
+      // 自己的行不显示任何操作
+      if (u.username === currentUsername) return '<span class="text-xs text-slate-300">自己</span>';
+      // 任何人都不能修改 superadmin
+      if (u.role === 'superadmin') return '<span class="text-xs text-slate-300">不可操作</span>';
+      const isSuper = currentRole === 'superadmin';
+      const makeBtn = (role, text, cls) =>
+        `<button type="button" class="px-2.5 py-1 rounded-md text-xs font-medium mr-2 ${cls}" data-set-role="${role}" data-target="${escapeHtml(u.username)}">${text}</button>`;
+      const btns = [];
+      if (isSuper) {
+        if (u.role === 'admin') btns.push(makeBtn('creator', '撤销管理员', 'bg-yellow-500 text-white hover:bg-yellow-600 transition'));
+        if (u.role === 'creator') btns.push(makeBtn('admin', '设为管理员', 'bg-brand-600 text-white hover:bg-brand-700 transition'), makeBtn('user', '降为普通用户', 'bg-slate-500 text-white hover:bg-slate-600 transition'));
+        if (u.role === 'user') btns.push(makeBtn('admin', '设为管理员', 'bg-brand-600 text-white hover:bg-brand-700 transition'), makeBtn('creator', '设为创作者', 'bg-green-600 text-white hover:bg-green-700 transition'));
+      } else {
+        // 普通管理员：不能设置/撤销管理员
+        if (u.role === 'creator') btns.push(makeBtn('user', '降为普通用户', 'bg-slate-500 text-white hover:bg-slate-600 transition'));
+        if (u.role === 'user') btns.push(makeBtn('creator', '设为创作者', 'bg-green-600 text-white hover:bg-green-700 transition'));
+      }
+      return btns.join('') || '<span class="text-xs text-slate-300">无可用操作</span>';
+    }
+
+    // 初始化用户管理：仅 superadmin / admin 显示
+    if (currentRole === 'superadmin' || currentRole === 'admin') {
+      if (userManageSection) userManageSection.classList.remove('hidden');
+      loadUsers();
+    }
+    if (userRefreshBtn) userRefreshBtn.addEventListener('click', loadUsers);
 
     // 专题下拉（来自 data.js hotKeywords）；"无" 表示不属于任何专题
     const noneOption = document.createElement('option');
@@ -403,10 +517,10 @@
       submitBtn.textContent = editingId !== null ? '更新中...' : '发布中...';
       try {
         if (editingId !== null) {
-          await api.updateArticle(editingId, { title, content: contentParagraphs, topic, image, source });
+          await api.updateArticle(editingId, { title, content: contentParagraphs, topic, image, source, username: currentUsername });
           showFormMessage('文章更新成功', 'success');
         } else {
-          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source);
+          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source, currentUsername);
           showFormMessage('文章发布成功', 'success');
         }
         resetForm();

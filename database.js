@@ -20,7 +20,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'user'
   );
 
   CREATE TABLE IF NOT EXISTS articles (
@@ -30,7 +31,8 @@ db.exec(`
     topic TEXT DEFAULT '',
     time TEXT DEFAULT '',
     image TEXT DEFAULT '',
-    source TEXT DEFAULT ''
+    source TEXT DEFAULT '',
+    author TEXT DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS comments (
@@ -42,6 +44,22 @@ db.exec(`
     FOREIGN KEY (articleId) REFERENCES articles(id) ON DELETE CASCADE
   );
 `);
+
+// ---- 初始化最高管理员 ----
+// 规则：只有用户名为 admin 的才是最高管理员（superadmin）。
+// 用户表为空（全新数据库）时自动创建 admin，保证上线后始终有超级管理员；
+// 若 admin 已存在但角色不是 superadmin，则自动恢复。
+const adminUser = db.prepare("SELECT id, role FROM users WHERE username = 'admin'").get();
+if (!adminUser) {
+  const initialPassword = process.env.ADMIN_PASSWORD || 'admin123456';
+  db.prepare("INSERT INTO users (username, password, role) VALUES ('admin', ?, 'superadmin')")
+    .run(initialPassword);
+  console.warn('⚠️  未检测到最高管理员，已自动创建默认账号 admin');
+  console.warn('⚠️  请务必通过环境变量 ADMIN_PASSWORD 设置初始密码，或登录后尽快修改密码！');
+} else if (adminUser.role !== 'superadmin') {
+  db.prepare("UPDATE users SET role = 'superadmin' WHERE username = 'admin'").run();
+  console.log('✅ 已将 admin 的角色恢复为 superadmin');
+}
 
 console.log('✅ SQLite 数据库初始化完成');
 console.log(`📁 数据库位置: ${dbPath}`);

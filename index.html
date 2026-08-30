@@ -140,10 +140,10 @@
     <div class="max-w-7xl mx-auto px-4 flex items-stretch">
       <ul id="main-nav" class="flex items-stretch overflow-x-auto">
         <li><a href="index.html" class="nav-link active">首页</a></li>
-        <li><a href="#channel-intl" class="nav-link" data-target="channel-intl">国际</a></li>
-        <li><a href="#channel-finance" class="nav-link" data-target="channel-finance">财经</a></li>
-        <li><a href="#channel-tech" class="nav-link" data-target="channel-tech">科技</a></li>
-        <li><a href="#channel-culture" class="nav-link" data-target="channel-culture">文化</a></li>
+        <li><a href="https://www.gov.cn/" target="_blank" class="nav-link">中国政府网</a></li>
+        <li><a href="http://www.moe.gov.cn/" target="_blank" class="nav-link">教育部</a></li>
+        <li><a href="http://www.shandong.gov.cn/" target="_blank" class="nav-link">山东省政府</a></li>
+        <li><a href="http://edu.shandong.gov.cn/" target="_blank" class="nav-link">山东省教育厅</a></li>
         <li><a href="./allnews.html" class="nav-link">全部</a></li>
       </ul>
       <div class="ml-auto flex items-center gap-3">
@@ -306,6 +306,14 @@
           <label for="register-confirm" class="block text-sm text-slate-600 mb-1.5">确认密码</label>
           <input id="register-confirm" type="password" autocomplete="new-password" placeholder="请再次输入密码"
                  class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+        </div>
+        <div>
+          <label for="register-role" class="block text-sm text-slate-600 mb-1.5">注册身份</label>
+          <select id="register-role"
+                  class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition bg-white">
+            <option value="user">普通用户（只读）</option>
+            <option value="creator">创作者（可发布文章）</option>
+          </select>
         </div>
         <p id="register-error" class="text-xs text-red-500 min-h-[18px] leading-relaxed"></p>
         <button type="submit" class="w-full py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">注 册</button>
@@ -576,8 +584,12 @@
       const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
       const username = localStorage.getItem('username') || '';
       if (isLoggedIn) {
+        const role = localStorage.getItem('role') || '';
+        const creatorLink = role !== 'user'
+          ? `<a href="admin.html" class="px-4 py-2 rounded-full text-sm font-semibold text-brand-600 border border-brand-600 hover:bg-brand-50 transition">创作者平台</a>`
+          : '';
         authArea.innerHTML = `
-          <a href="admin.html" class="px-4 py-2 rounded-full text-sm font-semibold text-brand-600 border border-brand-600 hover:bg-brand-50 transition">创作者平台</a>
+          ${creatorLink}
           <span class="text-sm font-semibold text-slate-700">${escapeHtml(username)}</span>
           <button id="logout-btn" class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">退出</button>
         `;
@@ -593,6 +605,7 @@
     function logout() {
       localStorage.removeItem('username');
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('role');
       updateAuthUI();
     }
 
@@ -615,6 +628,7 @@
         if (data && data.success) {
           localStorage.setItem('username', data.username || username);
           localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('role', data.role || 'user');
           loginForm.reset();
           updateAuthUI();
           closeAuthModal();
@@ -632,17 +646,19 @@
       const username = document.getElementById('register-username').value.trim();
       const password = document.getElementById('register-password').value;
       const confirmPassword = document.getElementById('register-confirm').value;
+      const role = document.getElementById('register-role').value;
       if (username.length < 3) { registerErrorEl.textContent = '用户名不少于 3 个字符'; return; }
       if (password.length < 6) { registerErrorEl.textContent = '密码不少于 6 个字符'; return; }
       if (password !== confirmPassword) { registerErrorEl.textContent = '两次输入的密码不一致'; return; }
       try {
-        const data = await api.register(username, password);
+        const data = await api.register(username, password, role);
         if (data && data.success) {
           // 注册成功后自动登录
           const loginData = await api.login(username, password);
           if (loginData && loginData.success) {
             localStorage.setItem('username', loginData.username || username);
             localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('role', loginData.role || 'user');
             registerForm.reset();
             updateAuthUI();
             closeAuthModal();
