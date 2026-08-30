@@ -379,6 +379,38 @@ app.post('/api/admin/announcements', async (req, res) => {
   }
 });
 
+// ---- 更新公告（兼容旧版前端）：PUT /api/admin/announcements ----
+// 旧版只支持单条公告，更新第一条激活公告；无公告时自动创建。
+app.put('/api/admin/announcements', async (req, res) => {
+  try {
+    const { content, username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权管理公告' });
+    }
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, message: '公告内容不能为空' });
+    }
+    const row = db.prepare('SELECT id FROM announcements WHERE is_active = 1 ORDER BY id ASC LIMIT 1').get();
+    const now = formatNow();
+    if (row) {
+      db.prepare('UPDATE announcements SET content = ?, updated_at = ? WHERE id = ?').run(String(content).trim(), now, row.id);
+    } else {
+      db.prepare('INSERT INTO announcements (content, is_active, updated_at) VALUES (?, 1, ?)').run(String(content).trim(), now);
+    }
+    res.json({ success: true, message: '公告已更新' });
+  } catch (error) {
+    console.error('更新公告失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
 // ---- 更新公告：PUT /api/admin/announcements/:id ----
 app.put('/api/admin/announcements/:id', async (req, res) => {
   try {
