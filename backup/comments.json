@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "articleId": 1,
+    "username": "admin",
+    "content": "test",
+    "time": "2026-08-29 16:17"
+  },
+  {
+    "id": 2,
+    "articleId": 6,
+    "username": "admin",
+    "content": "不好吃",
+    "time": "2026-08-29 10:03"
+  },
+  {
+    "id": 3,
+    "articleId": 7,
+    "username": "admin",
+    "content": "冰冰冰",
+    "time": "2026-08-29 10:03"
+  },
+  {
+    "id": 4,
+    "articleId": 8,
+    "username": "牛哥牛逼666",
+    "content": "牛哥牛逼666",
+    "time": "2026-08-29 10:08"
+  },
+  {
+    "id": 5,
+    "articleId": 7,
+    "username": "迟樱1",
+    "content": "666",
+    "time": "2026-08-29 10:31"
+  },
+  {
+    "id": 6,
+    "articleId": 13,
+    "username": "admin",
+    "content": "23333",
+    "time": "2026-08-29 10:38"
+  }
+]
