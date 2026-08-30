@@ -16,6 +16,12 @@ function getUserByUsername(username) {
   return user;
 }
 
+function formatNow() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // 跨域支持
 app.use(cors());
 
@@ -332,6 +338,48 @@ app.post('/api/articles/:id/comments', async (req, res) => {
     res.json({ success: true, id: info.lastInsertRowid, comment: newComment, message: '评论成功' });
   } catch (error) {
     console.error('发表评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 获取公告：GET /api/announcements ----
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const row = db.prepare('SELECT id, content, updated_at FROM announcements WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
+    res.json(row ? [row] : []);
+  } catch (error) {
+    console.error('获取公告失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 更新公告：PUT /api/admin/announcements ----
+app.put('/api/admin/announcements', async (req, res) => {
+  try {
+    const { content, username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权管理公告' });
+    }
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, message: '公告内容不能为空' });
+    }
+    const row = db.prepare('SELECT id FROM announcements WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
+    const now = formatNow();
+    if (row) {
+      db.prepare('UPDATE announcements SET content = ?, updated_at = ? WHERE id = ?').run(String(content).trim(), now, row.id);
+    } else {
+      db.prepare('INSERT INTO announcements (content, is_active, updated_at) VALUES (?, 1, ?)').run(String(content).trim(), now);
+    }
+    res.json({ success: true, message: '公告已更新' });
+  } catch (error) {
+    console.error('更新公告失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });

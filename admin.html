@@ -217,6 +217,17 @@
         <div id="user-manage-list" class="overflow-x-auto"></div>
         <p id="user-manage-msg" class="mt-3 text-xs min-h-[16px] leading-relaxed"></p>
       </div>
+      <div class="mt-6 bg-white rounded-xl shadow-card p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">公告管理</h2>
+        <p class="text-xs text-slate-500 mb-2">当前公告</p>
+        <div id="announcement-current" class="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 mb-4"></div>
+        <textarea id="announcement-input" rows="2" placeholder="输入新的公告内容"
+                  class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
+        <div class="mt-3 flex items-center gap-3 flex-wrap">
+          <button id="announcement-update-btn" class="px-5 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">更新公告</button>
+          <p id="announcement-msg" class="text-xs min-h-[16px] leading-relaxed"></p>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -224,13 +235,9 @@
   <footer class="bg-brand-800 text-brand-100">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
-        <span class="text-brand-100">关于我们</span>
+        <a href="topic.html?category=关于我们" class="text-brand-100 hover:text-white transition">关于我们</a>
         <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">联系方式</span>
-        <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">版权声明</span>
-        <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">隐私政策</span>
+        <a href="topic.html?category=新手入门" class="text-brand-100 hover:text-white transition">新手入门</a>
       </div>
     </div>
     <div class="bg-brand-900">
@@ -258,8 +265,14 @@
 
     // ----- 顶部公告（仅显示第一条，居左） -----
     const announcementContent = document.getElementById('announcement-content');
-    if (announcementContent && announcements && announcements.length > 0) {
-      announcementContent.textContent = announcements[0];
+    if (announcementContent) {
+      api.getAnnouncements()
+        .then(list => {
+          announcementContent.textContent = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+        })
+        .catch(() => {
+          announcementContent.textContent = '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+        });
     }
 
     // ----- 登录状态（所有登录用户均可访问用户中心） -----
@@ -555,6 +568,50 @@
       return btns.join('') || '<span class="text-xs text-slate-300">无可用操作</span>';
     }
 
+    // ----- 公告管理（仅 admin / superadmin） -----
+    const announcementCurrentEl = document.getElementById('announcement-current');
+    const announcementInputEl = document.getElementById('announcement-input');
+    const announcementUpdateBtn = document.getElementById('announcement-update-btn');
+    const announcementMsgEl = document.getElementById('announcement-msg');
+
+    async function loadAnnouncement() {
+      if (!announcementCurrentEl) return;
+      try {
+        const list = await api.getAnnouncements();
+        const text = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+        announcementCurrentEl.textContent = text;
+        if (announcementInputEl) announcementInputEl.value = text;
+      } catch (err) {
+        announcementCurrentEl.textContent = '公告加载失败，请稍后重试';
+      }
+    }
+
+    if (announcementUpdateBtn) {
+      announcementUpdateBtn.addEventListener('click', async () => {
+        const content = announcementInputEl ? announcementInputEl.value.trim() : '';
+        if (!content) {
+          if (announcementMsgEl) {
+            announcementMsgEl.textContent = '公告内容不能为空';
+            announcementMsgEl.className = 'text-xs text-red-500';
+          }
+          return;
+        }
+        try {
+          await api.updateAnnouncement(content, currentUsername);
+          if (announcementMsgEl) {
+            announcementMsgEl.textContent = '公告已更新';
+            announcementMsgEl.className = 'text-xs text-green-600';
+          }
+          await loadAnnouncement();
+        } catch (err) {
+          if (announcementMsgEl) {
+            announcementMsgEl.textContent = err.message || '更新失败，请稍后重试';
+            announcementMsgEl.className = 'text-xs text-red-500';
+          }
+        }
+      });
+    }
+
     if (userRefreshBtn) userRefreshBtn.addEventListener('click', loadUsers);
 
     // 专题下拉（来自 data.js hotKeywords）；"无" 表示不属于任何专题
@@ -568,6 +625,15 @@
       opt.textContent = t;
       topicSelect.appendChild(opt);
     });
+    // 管理员专属专题：关于我们 / 新手入门（仅 admin/superadmin 可选）
+    if (currentRole === 'superadmin' || currentRole === 'admin') {
+      ['关于我们', '新手入门'].forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        topicSelect.appendChild(opt);
+      });
+    }
     topicSelect.value = '';
 
     form.addEventListener('submit', async (e) => {
@@ -615,7 +681,10 @@
     renderProfile();
     loadProfileStats();
     if (canCreate) loadArticles();
-    if (canAdmin) loadUsers();
+    if (canAdmin) {
+      loadUsers();
+      loadAnnouncement();
+    }
   </script>
 
   <style>

@@ -152,13 +152,9 @@
   <footer class="bg-brand-800 text-brand-100">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div class="flex items-center justify-center gap-x-8 gap-y-3 flex-wrap text-sm">
-        <span class="text-brand-100">关于我们</span>
+        <a href="topic.html?category=关于我们" class="text-brand-100 hover:text-white transition">关于我们</a>
         <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">联系方式</span>
-        <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">版权声明</span>
-        <span class="h-4 w-px bg-brand-600"></span>
-        <span class="text-brand-100">隐私政策</span>
+        <a href="topic.html?category=新手入门" class="text-brand-100 hover:text-white transition">新手入门</a>
       </div>
     </div>
     <div class="bg-brand-900">
@@ -175,10 +171,7 @@
             class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition items-center justify-center hidden">
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
     </button>
-    <button title="热点" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
-      <span class="text-[11px] font-semibold">热点</span>
-    </button>
-    <button title="分享" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
+    <button data-share title="分享" class="w-12 h-12 rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition flex items-center justify-center">
       <span class="text-[11px] font-semibold">分享</span>
     </button>
   </div>
@@ -200,8 +193,14 @@
 
     // ----- 顶部公告（仅显示第一条，居左） -----
     const announcementContent = document.getElementById('announcement-content');
-    if (announcementContent && announcements && announcements.length > 0) {
-      announcementContent.textContent = announcements[0];
+    if (announcementContent) {
+      api.getAnnouncements()
+        .then(list => {
+          announcementContent.textContent = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+        })
+        .catch(() => {
+          announcementContent.textContent = '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+        });
     }
 
     // ----- 热门搜索词渲染 -----
@@ -384,5 +383,6 @@
     }
     .nav-link:hover { background: rgba(255,255,255,.12); color: #fff; }
   </style>
+  <script src="share.js"></script>
 </body>
 </html>

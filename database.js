@@ -43,6 +43,13 @@ db.exec(`
     time TEXT DEFAULT '',
     FOREIGN KEY (articleId) REFERENCES articles(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT 1,
+    updated_at TEXT DEFAULT ''
+  );
 `);
 
 // ---- 兼容旧数据库：为已有表补充缺失的列（一次性迁移） ----
@@ -82,6 +89,17 @@ if (createdAdded) {
   const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const updated = db.prepare("UPDATE users SET created_at = ? WHERE created_at IS NULL OR created_at = ''").run(ts);
   console.log(`✅ 已为 ${updated.changes} 名老用户补充注册时间`);
+}
+
+// ---- 初始化默认公告 ----
+const announcementCount = db.prepare('SELECT COUNT(*) AS n FROM announcements').get().n;
+if (announcementCount === 0) {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  db.prepare("INSERT INTO announcements (content, is_active, updated_at) VALUES (?, 1, ?)")
+    .run('📢 欢迎访问相思门户网，本地视野，全球资讯。', ts);
+  console.log('✅ 已插入默认公告');
 }
 
 // ---- 初始化最高管理员 ----

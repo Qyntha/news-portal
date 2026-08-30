@@ -91,7 +91,21 @@ function setRole(username, target, role) {
   return postJSON('/api/admin/set-role', { username, target, role });
 }
 
+// 获取公告：GET /api/announcements
+function getAnnouncements() {
+  return request('/api/announcements');
+}
+
+// 更新公告：PUT /api/admin/announcements
+function updateAnnouncement(content, username) {
+  return request('/api/admin/announcements', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, username })
+  });
+}
+
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole };
+  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, updateAnnouncement };
 }
