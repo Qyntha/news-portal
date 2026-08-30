@@ -219,12 +219,13 @@
       </div>
       <div class="mt-6 bg-white rounded-xl shadow-card p-6">
         <h2 class="text-lg font-bold text-slate-800 mb-4">公告管理</h2>
-        <p class="text-xs text-slate-500 mb-2">当前公告</p>
-        <div id="announcement-current" class="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 mb-4"></div>
-        <textarea id="announcement-input" rows="2" placeholder="输入新的公告内容"
+        <p class="text-xs text-slate-500 mb-2">公告列表（顶部栏按顺序轮播，一次一条，每条展示 6 秒）</p>
+        <div id="announcement-list" class="space-y-2 mb-4"></div>
+        <textarea id="announcement-input" rows="2" placeholder="输入公告内容，可添加多条"
                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
         <div class="mt-3 flex items-center gap-3 flex-wrap">
-          <button id="announcement-update-btn" class="px-5 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">更新公告</button>
+          <button id="announcement-add-btn" class="px-5 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">新增公告</button>
+          <button id="announcement-cancel-btn" class="hidden px-5 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">取消编辑</button>
           <p id="announcement-msg" class="text-xs min-h-[16px] leading-relaxed"></p>
         </div>
       </div>
@@ -268,7 +269,16 @@
     if (announcementContent) {
       api.getAnnouncements()
         .then(list => {
-          announcementContent.textContent = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+          const items = (list || []).map(a => a.content).filter(Boolean);
+          if (!items.length) items.push('📢 欢迎访问相思门户网，本地视野，全球资讯。');
+          let idx = 0;
+          announcementContent.textContent = items[0];
+          if (items.length > 1) {
+            setInterval(() => {
+              idx = (idx + 1) % items.length;
+              announcementContent.textContent = items[idx];
+            }, 6000);
+          }
         })
         .catch(() => {
           announcementContent.textContent = '📢 欢迎访问相思门户网，本地视野，全球资讯。';
@@ -568,47 +578,102 @@
       return btns.join('') || '<span class="text-xs text-slate-300">无可用操作</span>';
     }
 
-    // ----- 公告管理（仅 admin / superadmin） -----
-    const announcementCurrentEl = document.getElementById('announcement-current');
+    // ----- 公告管理（仅 admin / superadmin，支持多条） -----
+    const announcementListEl = document.getElementById('announcement-list');
     const announcementInputEl = document.getElementById('announcement-input');
-    const announcementUpdateBtn = document.getElementById('announcement-update-btn');
+    const announcementAddBtn = document.getElementById('announcement-add-btn');
+    const announcementCancelBtn = document.getElementById('announcement-cancel-btn');
     const announcementMsgEl = document.getElementById('announcement-msg');
+    let editingAnnouncementId = null;
 
-    async function loadAnnouncement() {
-      if (!announcementCurrentEl) return;
+    function showAnnouncementMsg(text, type) {
+      if (!announcementMsgEl) return;
+      announcementMsgEl.textContent = text;
+      announcementMsgEl.className = 'text-xs min-h-[16px] leading-relaxed ' +
+        (type === 'success' ? 'text-green-600' : (type === 'error' ? 'text-red-500' : ''));
+    }
+
+    function resetAnnouncementForm() {
+      editingAnnouncementId = null;
+      if (announcementInputEl) announcementInputEl.value = '';
+      if (announcementAddBtn) announcementAddBtn.textContent = '新增公告';
+      if (announcementCancelBtn) announcementCancelBtn.classList.add('hidden');
+    }
+
+    async function loadAnnouncements() {
+      if (!announcementListEl) return;
       try {
         const list = await api.getAnnouncements();
-        const text = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
-        announcementCurrentEl.textContent = text;
-        if (announcementInputEl) announcementInputEl.value = text;
+        const items = list || [];
+        if (!items.length) {
+          announcementListEl.innerHTML = '<div class="py-4 text-center text-sm text-slate-400">暂无公告</div>';
+        } else {
+          announcementListEl.innerHTML = items.map(a => `
+            <div class="flex items-start justify-between gap-3 bg-slate-50 rounded-lg px-3 py-2">
+              <span class="flex-1 text-sm text-slate-700 break-words">${escapeHtml(a.content)}</span>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" class="ann-edit px-2 py-1 rounded-md bg-brand-600 text-white text-xs transition hover:bg-brand-700" data-id="${a.id}">编辑</button>
+                <button type="button" class="ann-del px-2 py-1 rounded-md bg-red-500 text-white text-xs transition hover:bg-red-600" data-id="${a.id}">删除</button>
+              </div>
+            </div>
+          `).join('');
+        }
+        announcementListEl.querySelectorAll('.ann-edit').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const item = items.find(x => x.id === Number(btn.dataset.id));
+            if (!item) return;
+            editingAnnouncementId = item.id;
+            if (announcementInputEl) announcementInputEl.value = item.content;
+            if (announcementAddBtn) announcementAddBtn.textContent = '保存修改';
+            if (announcementCancelBtn) announcementCancelBtn.classList.remove('hidden');
+            showAnnouncementMsg('', '');
+          });
+        });
+        announcementListEl.querySelectorAll('.ann-del').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = Number(btn.dataset.id);
+            if (!confirm('确定要删除这条公告吗？')) return;
+            try {
+              await api.deleteAnnouncement(id, currentUsername);
+              showAnnouncementMsg('公告已删除', 'success');
+              if (editingAnnouncementId === id) resetAnnouncementForm();
+              await loadAnnouncements();
+            } catch (err) {
+              showAnnouncementMsg(err.message || '删除失败，请稍后重试', 'error');
+            }
+          });
+        });
       } catch (err) {
-        announcementCurrentEl.textContent = '公告加载失败，请稍后重试';
+        announcementListEl.innerHTML = '<div class="py-4 text-center text-sm text-slate-400">公告加载失败，请稍后重试</div>';
       }
     }
 
-    if (announcementUpdateBtn) {
-      announcementUpdateBtn.addEventListener('click', async () => {
+    if (announcementAddBtn) {
+      announcementAddBtn.addEventListener('click', async () => {
         const content = announcementInputEl ? announcementInputEl.value.trim() : '';
         if (!content) {
-          if (announcementMsgEl) {
-            announcementMsgEl.textContent = '公告内容不能为空';
-            announcementMsgEl.className = 'text-xs text-red-500';
-          }
+          showAnnouncementMsg('公告内容不能为空', 'error');
           return;
         }
         try {
-          await api.updateAnnouncement(content, currentUsername);
-          if (announcementMsgEl) {
-            announcementMsgEl.textContent = '公告已更新';
-            announcementMsgEl.className = 'text-xs text-green-600';
+          if (editingAnnouncementId !== null) {
+            await api.updateAnnouncement(editingAnnouncementId, content, currentUsername);
+            showAnnouncementMsg('公告已更新', 'success');
+          } else {
+            await api.createAnnouncement(content, currentUsername);
+            showAnnouncementMsg('公告已添加', 'success');
           }
-          await loadAnnouncement();
+          resetAnnouncementForm();
+          await loadAnnouncements();
         } catch (err) {
-          if (announcementMsgEl) {
-            announcementMsgEl.textContent = err.message || '更新失败，请稍后重试';
-            announcementMsgEl.className = 'text-xs text-red-500';
-          }
+          showAnnouncementMsg(err.message || '操作失败，请稍后重试', 'error');
         }
+      });
+    }
+    if (announcementCancelBtn) {
+      announcementCancelBtn.addEventListener('click', () => {
+        resetAnnouncementForm();
+        showAnnouncementMsg('', '');
       });
     }
 
@@ -683,7 +748,7 @@
     if (canCreate) loadArticles();
     if (canAdmin) {
       loadUsers();
-      loadAnnouncement();
+      loadAnnouncements();
     }
   </script>
 

@@ -196,7 +196,16 @@
     if (announcementContent) {
       api.getAnnouncements()
         .then(list => {
-          announcementContent.textContent = (list && list[0] && list[0].content) || '📢 欢迎访问相思门户网，本地视野，全球资讯。';
+          const items = (list || []).map(a => a.content).filter(Boolean);
+          if (!items.length) items.push('📢 欢迎访问相思门户网，本地视野，全球资讯。');
+          let idx = 0;
+          announcementContent.textContent = items[0];
+          if (items.length > 1) {
+            setInterval(() => {
+              idx = (idx + 1) % items.length;
+              announcementContent.textContent = items[idx];
+            }, 6000);
+          }
         })
         .catch(() => {
           announcementContent.textContent = '📢 欢迎访问相思门户网，本地视野，全球资讯。';

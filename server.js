@@ -345,16 +345,16 @@ app.post('/api/articles/:id/comments', async (req, res) => {
 // ---- 获取公告：GET /api/announcements ----
 app.get('/api/announcements', async (req, res) => {
   try {
-    const row = db.prepare('SELECT id, content, updated_at FROM announcements WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
-    res.json(row ? [row] : []);
+    const rows = db.prepare('SELECT id, content, updated_at FROM announcements WHERE is_active = 1 ORDER BY id ASC').all();
+    res.json(rows);
   } catch (error) {
     console.error('获取公告失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
 
-// ---- 更新公告：PUT /api/admin/announcements ----
-app.put('/api/admin/announcements', async (req, res) => {
+// ---- 新增公告：POST /api/admin/announcements ----
+app.post('/api/admin/announcements', async (req, res) => {
   try {
     const { content, username } = req.body || {};
     if (!username) {
@@ -370,16 +370,68 @@ app.put('/api/admin/announcements', async (req, res) => {
     if (!content || !String(content).trim()) {
       return res.status(400).json({ success: false, message: '公告内容不能为空' });
     }
-    const row = db.prepare('SELECT id FROM announcements WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
     const now = formatNow();
-    if (row) {
-      db.prepare('UPDATE announcements SET content = ?, updated_at = ? WHERE id = ?').run(String(content).trim(), now, row.id);
-    } else {
-      db.prepare('INSERT INTO announcements (content, is_active, updated_at) VALUES (?, 1, ?)').run(String(content).trim(), now);
+    const info = db.prepare('INSERT INTO announcements (content, is_active, updated_at) VALUES (?, 1, ?)').run(String(content).trim(), now);
+    res.json({ success: true, id: info.lastInsertRowid, message: '公告已添加' });
+  } catch (error) {
+    console.error('新增公告失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 更新公告：PUT /api/admin/announcements/:id ----
+app.put('/api/admin/announcements/:id', async (req, res) => {
+  try {
+    const { content, username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
     }
-    res.json({ success: true, message: '公告已更新' });
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权管理公告' });
+    }
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, message: '公告内容不能为空' });
+    }
+    const id = Number(req.params.id);
+    const row = db.prepare('SELECT id FROM announcements WHERE id = ?').get(id);
+    if (!row) {
+      return res.status(404).json({ success: false, message: '公告不存在' });
+    }
+    db.prepare('UPDATE announcements SET content = ?, updated_at = ? WHERE id = ?').run(String(content).trim(), formatNow(), id);
+    res.json({ success: true, id, message: '公告已更新' });
   } catch (error) {
     console.error('更新公告失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 删除公告：DELETE /api/admin/announcements/:id ----
+app.delete('/api/admin/announcements/:id', async (req, res) => {
+  try {
+    const username = req.query.username || (req.body && req.body.username) || '';
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权管理公告' });
+    }
+    const id = Number(req.params.id);
+    const row = db.prepare('SELECT id FROM announcements WHERE id = ?').get(id);
+    if (!row) {
+      return res.status(404).json({ success: false, message: '公告不存在' });
+    }
+    db.prepare('DELETE FROM announcements WHERE id = ?').run(id);
+    res.json({ success: true, id, message: '公告已删除' });
+  } catch (error) {
+    console.error('删除公告失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
