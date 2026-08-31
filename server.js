@@ -1,9 +1,25 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
 const db = require('./database.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Supabase 客户端（凭据来自 .env，生产环境配置在 Railway 环境变量中）
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'news-images';
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// multer：内存存储，便于后续转传 Supabase
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 // 根据用户名查询用户（含角色）
 function getUserByUsername(username) {
@@ -468,6 +484,56 @@ app.delete('/api/admin/announcements/:id', async (req, res) => {
   }
 });
 
+// ---- 图片上传：POST /api/upload-image ----
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+const EXT_MAP = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/svg+xml': '.svg' };
+
+app.post('/api/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    // 登录校验：请求头 x-username 携带用户名
+    const username = (req.headers['x-username'] || '').trim();
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '未接收到图片文件' });
+    }
+    // 文件类型校验（后端二次保障）
+    if (!ALLOWED_IMAGE_TYPES.includes(req.file.mimetype)) {
+      return res.status(400).json({ success: false, message: '不支持的图片格式，请上传 PNG, JPEG, GIF, WEBP 或 SVG 格式的图片。' });
+    }
+    // 文件大小校验（后端二次保障）
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: '图片大小不能超过 5MB。' });
+    }
+    if (!supabase) {
+      return res.status(500).json({ success: false, message: '服务器未配置 Supabase，请联系管理员' });
+    }
+    // 唯一文件名：时间戳_随机数.扩展名
+    const ext = EXT_MAP[req.file.mimetype] || '.img';
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}${ext}`;
+    const filePath = `uploads/${fileName}`;
+
+    const { error } = await supabase.storage.from(SUPABASE_BUCKET).upload(filePath, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false
+    });
+    if (error) {
+      console.error('Supabase 上传失败:', error);
+      return res.status(500).json({ success: false, message: '图片上传失败：' + (error.message || '未知错误') });
+    }
+    const publicUrl = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(filePath).data.publicUrl;
+    res.json({ success: true, url: publicUrl, message: '上传成功' });
+  } catch (error) {
+    console.error('上传图片失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
 // ---- 404 兜底 ----
 app.use((req, res) => {
   res.status(404).json({ success: false, message: '接口不存在' });
@@ -475,6 +541,13 @@ app.use((req, res) => {
 
 // ---- 错误处理 ----
 app.use((err, req, res, next) => {
+  // multer 文件大小限制
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, message: '图片大小不能超过 5MB。' });
+    }
+    return res.status(400).json({ success: false, message: '文件上传失败：' + err.message });
+  }
   const status = err.status || err.statusCode || 500;
   if (status >= 500) console.error(err);
   res.status(status).json({

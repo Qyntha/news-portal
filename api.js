@@ -115,7 +115,18 @@ function deleteAnnouncement(id, username) {
   return request(`/api/admin/announcements/${id}?username=${encodeURIComponent(username || '')}`, { method: 'DELETE' });
 }
 
+// 上传图片：POST /api/upload-image（FormData，multipart）
+function uploadImage(file, username) {
+  const form = new FormData();
+  form.append('image', file);
+  return request('/api/upload-image', {
+    method: 'POST',
+    headers: { 'x-username': username || '' },
+    body: form
+  });
+}
+
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement };
+  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
 }

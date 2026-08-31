@@ -188,9 +188,26 @@
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition bg-white"></select>
           </div>
           <div>
-            <label for="article-image" class="block text-sm text-slate-600 mb-1.5">文章配图（图片 URL，可选）</label>
-            <input id="article-image" type="url" placeholder="https://example.com/image.jpg"
-                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+            <label class="block text-sm text-slate-600 mb-1.5">文章配图（可点击上传、拖拽或粘贴）</label>
+            <div id="image-drop-zone"
+                 class="border-2 border-dashed border-slate-300 rounded-xl px-5 py-6 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition">
+              <p class="text-sm text-slate-500">📷 点击上传或拖拽图片至此区域</p>
+              <p class="mt-1 text-xs text-slate-400">支持 PNG、JPG、GIF、WEBP、SVG 格式，文件大小不超过 5MB</p>
+              <p id="image-upload-status" class="mt-2 text-xs text-brand-600 hidden"></p>
+            </div>
+            <div id="image-preview-wrap" class="hidden mt-3">
+              <img id="image-preview" src="" alt="图片预览" class="max-h-40 rounded-lg border border-slate-200" />
+              <div class="mt-2 flex items-center gap-3 flex-wrap">
+                <button type="button" id="image-remove-btn" class="px-3 py-1.5 rounded-md bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition">移除图片</button>
+                <span id="image-upload-error" class="text-xs text-red-500"></span>
+              </div>
+            </div>
+            <details class="mt-3">
+              <summary class="text-xs text-slate-400 cursor-pointer hover:text-brand-600 transition">或手动输入图片 URL（高级用户）</summary>
+              <input id="article-image" type="url" placeholder="https://example.com/image.jpg"
+                     class="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+            </details>
+            <input type="file" id="image-file-input" accept="image/*" class="hidden" />
           </div>
           <div>
             <label for="article-source" class="block text-sm text-slate-600 mb-1.5">来源（来源名称，可选）</label>
@@ -381,6 +398,94 @@
     const refreshBtn = document.getElementById('refresh-btn');
     let editingId = null;
 
+    // ----- 图片上传（Supabase Storage） -----
+    const imageDropZone = document.getElementById('image-drop-zone');
+    const imageFileInput = document.getElementById('image-file-input');
+    const imagePreviewWrap = document.getElementById('image-preview-wrap');
+    const imagePreview = document.getElementById('image-preview');
+    const imageRemoveBtn = document.getElementById('image-remove-btn');
+    const imageUploadStatus = document.getElementById('image-upload-status');
+    const imageUploadError = document.getElementById('image-upload-error');
+
+    function resetImageUpload() {
+      if (imageInput) imageInput.value = '';
+      if (imagePreviewWrap) imagePreviewWrap.classList.add('hidden');
+      if (imagePreview) imagePreview.src = '';
+      if (imageUploadStatus) { imageUploadStatus.textContent = ''; imageUploadStatus.classList.add('hidden'); }
+      if (imageUploadError) imageUploadError.textContent = '';
+    }
+
+    function showImagePreview(url) {
+      if (imagePreview) imagePreview.src = url;
+      if (imagePreviewWrap) imagePreviewWrap.classList.remove('hidden');
+    }
+
+    async function handleImageFile(file) {
+      if (!file) return;
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        if (imageUploadError) imageUploadError.textContent = '不支持的图片格式，请上传 PNG、JPG、GIF、WEBP 或 SVG 格式的图片。';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        if (imageUploadError) imageUploadError.textContent = '图片大小不能超过 5MB。';
+        return;
+      }
+      const localUrl = URL.createObjectURL(file);
+      showImagePreview(localUrl);
+      if (imageUploadError) imageUploadError.textContent = '';
+      if (imageUploadStatus) { imageUploadStatus.textContent = '上传中...'; imageUploadStatus.classList.remove('hidden'); }
+      try {
+        const data = await api.uploadImage(file, currentUsername);
+        if (imageInput) imageInput.value = data.url;
+        showImagePreview(data.url);
+        if (imageUploadStatus) { imageUploadStatus.textContent = '上传成功'; imageUploadStatus.classList.add('hidden'); }
+      } catch (err) {
+        if (imageUploadStatus) { imageUploadStatus.textContent = ''; imageUploadStatus.classList.add('hidden'); }
+        if (imageUploadError) imageUploadError.textContent = err.message || '上传失败，请重试';
+        if (imagePreviewWrap) imagePreviewWrap.classList.add('hidden');
+        if (imagePreview) imagePreview.src = '';
+      } finally {
+        URL.revokeObjectURL(localUrl);
+      }
+    }
+
+    if (imageDropZone) {
+      imageDropZone.addEventListener('click', () => { if (imageFileInput) imageFileInput.click(); });
+      ['dragenter', 'dragover'].forEach(evt => {
+        imageDropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          imageDropZone.classList.add('border-brand-400', 'bg-brand-50/50');
+        });
+      });
+      ['dragleave', 'drop'].forEach(evt => {
+        imageDropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          imageDropZone.classList.remove('border-brand-400', 'bg-brand-50/50');
+        });
+      });
+      imageDropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files[0]) handleImageFile(files[0]);
+      });
+    }
+    if (imageFileInput) {
+      imageFileInput.addEventListener('change', () => {
+        if (imageFileInput.files && imageFileInput.files[0]) handleImageFile(imageFileInput.files[0]);
+        imageFileInput.value = '';
+      });
+    }
+    document.addEventListener('paste', (e) => {
+      const items = (e.clipboardData && e.clipboardData.items) || [];
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) { handleImageFile(file); e.preventDefault(); break; }
+        }
+      }
+    });
+    if (imageRemoveBtn) imageRemoveBtn.addEventListener('click', resetImageUpload);
+
     function formatNow() {
       const d = new Date();
       const pad = n => String(n).padStart(2, '0');
@@ -405,6 +510,7 @@
       editingId = null;
       form.reset();
       topicSelect.value = '';
+      resetImageUpload();
       setFormMode('create');
       showFormMessage('', '');
     }
@@ -416,6 +522,12 @@
       topicSelect.value = article.topic || '';
       imageInput.value = article.image || '';
       sourceInput.value = article.source || '';
+      if (article.image) {
+        showImagePreview(article.image);
+      } else {
+        if (imagePreviewWrap) imagePreviewWrap.classList.add('hidden');
+        if (imagePreview) imagePreview.src = '';
+      }
       setFormMode('edit');
       showFormMessage('', '');
       form.scrollIntoView({ behavior: 'smooth', block: 'center' });
