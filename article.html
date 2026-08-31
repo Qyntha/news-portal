@@ -90,15 +90,16 @@
       </a>
 
       <!-- 搜索 -->
-      <form id="search-form" class="flex-1 min-w-[220px] max-w-xl ml-auto">
+      <form id="search-form" action="https://www.baidu.com/s" method="get" target="_blank" class="flex-1 min-w-[220px] max-w-xl ml-auto">
         <div class="flex items-center bg-slate-100 rounded-full border border-slate-200 px-4 py-2 focus-within:ring-2 focus-within:ring-brand-300">
           <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
-          <input id="search-input" type="text" placeholder="搜索新闻、专题、服务"
+          <input id="search-input" name="wd" type="text" placeholder="搜索新闻、专题、服务"
                  class="flex-1 bg-transparent outline-none text-sm px-3 placeholder:text-slate-400" />
           <button type="submit" class="text-sm font-medium text-brand-600 hover:text-brand-800 px-2">搜索</button>
         </div>
+        <input type="hidden" name="site" value="qyntha.github.io" />
       </form>
 
       <!-- 登录 / 用户区 -->
@@ -399,12 +400,6 @@
     });
     backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    // ----- 搜索（模拟） -----
-    document.getElementById('search-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const q = document.getElementById('search-input').value.trim();
-      if (q) alert(`正在搜索：“${q}”`);
-    });
   </script>
 
   <style>
