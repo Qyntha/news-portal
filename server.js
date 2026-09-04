@@ -56,8 +56,8 @@ app.get('/', (req, res) => {
 
 // ---- 用户注册 ----
 app.post('/api/register', async (req, res) => {
-  // 注册可自选身份：普通用户（user，默认）或创作者（creator）；管理员身份只能由管理员授予
-  const { username, password, role } = req.body || {};
+  // 所有新注册用户固定为普通用户（user），忽略请求中可能传入的角色参数
+  const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
@@ -65,10 +65,6 @@ app.post('/api/register', async (req, res) => {
     // 保留用户名 admin：只有它才是最高管理员，不允许通过注册冒领
     if (username === 'admin') {
       return res.status(400).json({ success: false, message: '该用户名已被保留，无法注册' });
-    }
-    const requestedRole = role || 'user';
-    if (requestedRole !== 'user' && requestedRole !== 'creator') {
-      return res.status(400).json({ success: false, message: '注册身份无效' });
     }
     const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
     if (existing) {
@@ -78,7 +74,7 @@ app.post('/api/register', async (req, res) => {
     const pad = n => String(n).padStart(2, '0');
     const created_at = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     const stmt = db.prepare('INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)');
-    const info = stmt.run(username, password, requestedRole, created_at);
+    const info = stmt.run(username, password, 'user', created_at);
     res.json({ success: true, message: '注册成功', id: info.lastInsertRowid });
   } catch (error) {
     console.error('注册失败:', error);
