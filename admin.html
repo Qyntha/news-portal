@@ -52,7 +52,8 @@
   </style>
   <script src="data.js"></script>
   <script src="api.js"></script>
-  <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet" />
+  <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
   <script>
     // 登录保护：未登录用户自动跳转回首页（普通用户可查看个人中心，但看不到创作者/管理模块）
     if (localStorage.getItem('isLoggedIn') !== 'true') {
@@ -160,74 +161,82 @@
 
     <!-- 模块2 · 创作者中心（creator/admin/superadmin 可见） -->
     <section id="panel-creator" class="uc-panel hidden">
-      <div class="bg-white rounded-xl shadow-card p-6">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 id="form-title" class="text-lg font-bold text-slate-800">发布文章</h2>
-          <div class="flex items-center gap-2">
-            <label for="article-select" class="text-xs text-slate-400 shrink-0">选择文章编辑：</label>
-            <select id="article-select"
-                    class="max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition">
-              <option value="">-- 新建文章 --</option>
-            </select>
-          </div>
-        </div>
-        <form id="article-form" class="space-y-4" novalidate>
-          <div>
-            <label for="article-title" class="block text-sm text-slate-600 mb-1.5">标题 <span class="text-red-500">*</span></label>
-            <input id="article-title" type="text" placeholder="请输入文章标题"
-                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
-          </div>
-          <div>
-            <label for="article-content" class="block text-sm text-slate-600 mb-1.5">正文（支持富文本） <span class="text-red-500">*</span></label>
-            <textarea id="article-content" rows="8" placeholder="请输入文章正文"
-                      class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
-          </div>
-          <div>
-            <label for="article-topic" class="block text-sm text-slate-600 mb-1.5">专题</label>
-            <select id="article-topic"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition bg-white"></select>
-          </div>
-          <div>
-            <label class="block text-sm text-slate-600 mb-1.5">文章配图（可点击上传、拖拽或粘贴）</label>
-            <div id="image-drop-zone"
-                 class="border-2 border-dashed border-slate-300 rounded-xl px-5 py-6 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition">
-              <p class="text-sm text-slate-500">📷 点击上传或拖拽图片至此区域</p>
-              <p class="mt-1 text-xs text-slate-400">支持 PNG、JPG、GIF、WEBP、SVG 格式，文件大小不超过 5MB</p>
-              <p id="image-upload-status" class="mt-2 text-xs text-brand-600 hidden"></p>
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        <!-- 左栏 · 文章列表（约 60%） -->
+        <section class="lg:col-span-3 bg-white rounded-xl shadow-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-800">文章列表 <span id="article-count" class="text-sm text-slate-400 font-normal"></span></h2>
+            <div class="flex items-center gap-3">
+              <button type="button" id="collapse-btn" class="text-xs text-slate-500 hover:text-brand-600 transition">▲ 收起</button>
+              <button type="button" id="refresh-btn" class="text-xs text-brand-500 hover:text-brand-700 transition">刷新</button>
             </div>
-            <div id="image-preview-wrap" class="hidden mt-3">
-              <img id="image-preview" src="" alt="图片预览" class="max-h-40 rounded-lg border border-slate-200" />
-              <div class="mt-2 flex items-center gap-3 flex-wrap">
-                <button type="button" id="image-remove-btn" class="px-3 py-1.5 rounded-md bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition">移除图片</button>
-                <span id="image-upload-error" class="text-xs text-red-500"></span>
+          </div>
+          <div id="article-list-wrap" class="overflow-hidden transition-all duration-300">
+            <div id="article-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+          </div>
+        </section>
+
+        <!-- 右栏 · 发布/编辑表单（约 40%） -->
+        <section class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
+          <div id="user-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
+            <p class="text-sm text-amber-700">您当前是普通用户，无法发布或管理文章。请联系管理员升级为创作者。</p>
+          </div>
+          <h2 id="form-title" class="text-lg font-bold text-slate-800 mb-4">发布文章</h2>
+          <form id="article-form" class="space-y-4" novalidate>
+            <div>
+              <label for="article-title" class="block text-sm text-slate-600 mb-1.5">标题 <span class="text-red-500">*</span></label>
+              <input id="article-title" type="text" placeholder="请输入文章标题"
+                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-600 mb-1.5">正文（支持富文本） <span class="text-red-500">*</span></label>
+              <div id="editor-container"></div>
+            </div>
+            <div>
+              <label for="article-topic" class="block text-sm text-slate-600 mb-1.5">专题</label>
+              <select id="article-topic"
+                      class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition bg-white"></select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-600 mb-1.5">文章配图（可点击上传、拖拽或粘贴）</label>
+              <div id="image-drop-zone"
+                   class="border-2 border-dashed border-slate-300 rounded-xl px-5 py-6 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition">
+                <p class="text-sm text-slate-500">📷 点击上传或拖拽图片至此区域</p>
+                <p class="mt-1 text-xs text-slate-400">支持 PNG、JPG、GIF、WEBP、SVG 格式，文件大小不超过 5MB</p>
+                <p id="image-upload-status" class="mt-2 text-xs text-brand-600 hidden"></p>
               </div>
+              <div id="image-preview-wrap" class="hidden mt-3">
+                <img id="image-preview" src="" alt="图片预览" class="max-h-40 rounded-lg border border-slate-200" />
+                <div class="mt-2 flex items-center gap-3 flex-wrap">
+                  <button type="button" id="image-remove-btn" class="px-3 py-1.5 rounded-md bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition">移除图片</button>
+                  <span id="image-upload-error" class="text-xs text-red-500"></span>
+                </div>
+              </div>
+              <details class="mt-3">
+                <summary class="text-xs text-slate-400 cursor-pointer hover:text-brand-600 transition">或手动输入图片 URL（备选）</summary>
+                <input id="article-image" type="url" placeholder="https://example.com/image.jpg"
+                       class="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+              </details>
+              <input type="file" id="image-file-input" accept="image/*" class="hidden" />
             </div>
-            <details class="mt-3">
-              <summary class="text-xs text-slate-400 cursor-pointer hover:text-brand-600 transition">或手动输入图片 URL（高级用户）</summary>
-              <input id="article-image" type="url" placeholder="https://example.com/image.jpg"
-                     class="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
-            </details>
-            <input type="file" id="image-file-input" accept="image/*" class="hidden" />
-          </div>
-          <div>
-            <label for="article-source" class="block text-sm text-slate-600 mb-1.5">来源（来源名称，可选）</label>
-            <input id="article-source" type="text" placeholder="留空则显示：相思门户网"
-                   class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
-          </div>
-          <div id="carousel-check-wrap" class="hidden">
-            <label class="inline-flex items-center gap-2 cursor-pointer">
-              <input id="article-carousel" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200" />
-              <span class="text-sm text-slate-600">显示在轮播中（今日头条）</span>
-            </label>
-          </div>
-          <p id="form-message" class="text-xs min-h-[18px] leading-relaxed"></p>
-          <div class="flex items-center gap-3 flex-wrap">
-            <button type="submit" id="submit-btn" class="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发布文章</button>
-            <button type="button" id="cancel-edit-btn" class="hidden px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">取消编辑</button>
-            <button type="button" id="form-carousel-btn" class="hidden px-4 py-2.5 rounded-lg text-white text-xs font-semibold transition"></button>
-            <button type="button" id="form-delete-btn" class="hidden px-4 py-2.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition">删除文章</button>
-          </div>
-        </form>
+            <div>
+              <label for="article-source" class="block text-sm text-slate-600 mb-1.5">来源（来源名称，可选）</label>
+              <input id="article-source" type="text" placeholder="留空则显示：相思门户网"
+                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+            </div>
+            <div id="carousel-check-wrap" class="hidden">
+              <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input id="article-carousel" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200" />
+                <span class="text-sm text-slate-600">显示在轮播中（今日头条）</span>
+              </label>
+            </div>
+            <p id="form-message" class="text-xs min-h-[18px] leading-relaxed"></p>
+            <div class="flex gap-3">
+              <button type="submit" id="submit-btn" class="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发布文章</button>
+              <button type="button" id="cancel-edit-btn" class="hidden px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">取消编辑</button>
+            </div>
+          </form>
+        </section>
       </div>
     </section>
 
@@ -383,11 +392,17 @@
       }
     }
 
-    // ----- 创作者中心：下拉选文章 + 富文本编辑 -----
+    // ----- 创作者中心：左文章列表 + 右富文本编辑 -----
     const form = document.getElementById('article-form');
-    const articleSelect = document.getElementById('article-select');
+    const formTitleEl = document.getElementById('form-title');
+    const formMessageEl = document.getElementById('form-message');
+    const articleListEl = document.getElementById('article-list');
+    const articleListWrap = document.getElementById('article-list-wrap');
+    const articleCountEl = document.getElementById('article-count');
+    const collapseBtn = document.getElementById('collapse-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const userNoticeEl = document.getElementById('user-notice');
     const titleInput = document.getElementById('article-title');
-    const contentInput = document.getElementById('article-content');
     const topicSelect = document.getElementById('article-topic');
     const imageInput = document.getElementById('article-image');
     const sourceInput = document.getElementById('article-source');
@@ -395,14 +410,12 @@
     const carouselCheck = document.getElementById('article-carousel');
     const submitBtn = document.getElementById('submit-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
-    const formDeleteBtn = document.getElementById('form-delete-btn');
-    const formCarouselBtn = document.getElementById('form-carousel-btn');
-    const formTitleEl = document.getElementById('form-title');
-    const formMessageEl = document.getElementById('form-message');
     let editingId = null;
     let currentArticle = null;
-    let editorReady = false;
+    let quillEditor = null;
+    let pendingEditorHtml = '';
     const canSetCarousel = currentRole === 'superadmin' || currentRole === 'admin';
+    const isAdminOrSuper = canSetCarousel;
 
     // ----- 图片上传（Supabase Storage） -----
     const imageDropZone = document.getElementById('image-drop-zone');
@@ -512,31 +525,13 @@
       cancelEditBtn.classList.toggle('hidden', !isEdit);
     }
 
-    function updateContextButtons() {
-      const isEdit = editingId !== null;
-      if (formDeleteBtn) formDeleteBtn.classList.toggle('hidden', !isEdit);
-      if (formCarouselBtn) {
-        const show = isEdit && canSetCarousel;
-        formCarouselBtn.classList.toggle('hidden', !show);
-        if (show && currentArticle) {
-          formCarouselBtn.textContent = currentArticle.is_carousel ? '取消轮播' : '设为轮播';
-          formCarouselBtn.className = (currentArticle.is_carousel ? 'bg-slate-500 hover:bg-slate-600' : 'bg-yellow-500 hover:bg-yellow-600') +
-            ' px-4 py-2.5 rounded-lg text-white text-xs font-semibold transition';
-        }
-      }
-      const canEdit = currentRole === 'superadmin' || currentRole === 'admin' || (currentArticle && currentArticle.author === currentUsername);
-      submitBtn.disabled = isEdit && !canEdit;
-    }
-
     function getEditorContent() {
-      const ed = window.tinymce && tinymce.get('article-content');
-      return ed ? ed.getContent() : contentInput.value;
+      return quillEditor ? quillEditor.root.innerHTML : '';
     }
 
     function setEditorContent(html) {
-      const ed = window.tinymce && tinymce.get('article-content');
-      if (ed) ed.setContent(html || '');
-      else contentInput.value = html || '';
+      if (quillEditor) quillEditor.root.innerHTML = html || '';
+      else pendingEditorHtml = html || '';
     }
 
     function resetForm() {
@@ -548,7 +543,6 @@
       setEditorContent('');
       submitBtn.disabled = false;
       setFormMode('create');
-      updateContextButtons();
       showFormMessage('', '');
     }
 
@@ -568,43 +562,94 @@
         if (imagePreview) imagePreview.src = '';
       }
       setFormMode('edit');
-      updateContextButtons();
       showFormMessage('', '');
       form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function truncateTitle(t) {
-      t = String(t || '');
-      return t.length > 26 ? t.slice(0, 26) + '…' : t;
+    function statusLabel(article) {
+      return article.status || '已发布';
     }
 
-    async function loadArticleOptions(selectedId) {
-      if (!articleSelect) return;
-      try {
-        const list = await api.getArticles();
-        const sorted = (list || []).slice().sort((a, b) => b.id - a.id);
-        articleSelect.innerHTML = '<option value="">-- 新建文章 --</option>' + sorted.map(a =>
-          `<option value="${a.id}">${escapeHtml(truncateTitle(a.title))}（${escapeHtml(a.topic || '未分类')}）</option>`
-        ).join('');
-        if (selectedId !== undefined && selectedId !== null) articleSelect.value = String(selectedId);
-      } catch (err) {
-        console.error('文章列表加载失败：', err);
-        articleSelect.innerHTML = '<option value="">-- 新建文章 --</option>';
-      }
-    }
-
-    async function handleArticleSelect() {
-      const id = articleSelect.value;
-      if (!id) {
-        resetForm();
+    function renderArticles(list) {
+      if (!articleListEl) return;
+      // 权限：创作者只看自己的文章；管理员看全部
+      const visible = isAdminOrSuper ? (list || []) : (list || []).filter(a => a.author === currentUsername);
+      const sorted = visible.slice().sort((a, b) => b.id - a.id);
+      if (articleCountEl) articleCountEl.textContent = `（共 ${sorted.length} 篇）`;
+      if (!sorted.length) {
+        articleListEl.innerHTML = '<div class="col-span-full py-12 text-center text-sm text-slate-400">暂无文章，开始创作吧！</div>';
         return;
       }
+      articleListEl.innerHTML = sorted.map(a => {
+        const canManage = isAdminOrSuper || a.author === currentUsername;
+        return `
+          <div class="border border-slate-100 rounded-xl p-4 hover:shadow-card transition">
+            <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+              <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${escapeHtml(a.topic || '未分类')}</span>
+              <span>${escapeHtml(a.time || '')}</span>
+              <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
+              ${a.is_carousel ? '<span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">轮播中</span>' : ''}
+            </div>
+            <h3 class="mt-2 text-sm font-bold text-slate-800 leading-snug">${escapeHtml(a.title)}</h3>
+            <div class="mt-1 text-xs text-slate-400">作者：${escapeHtml(a.author || '未知')} | 来源：${escapeHtml(a.source || '相思门户网')}</div>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
+              ${canManage ? `<button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      articleListEl.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const article = sorted.find(x => x.id === Number(btn.dataset.id));
+          if (article) fillForm(article);
+        });
+      });
+      articleListEl.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.dataset.id);
+          if (!confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
+          try {
+            await api.deleteArticle(id, currentUsername);
+            showFormMessage('删除成功', 'success');
+            if (editingId === id) resetForm();
+            await loadArticles();
+          } catch (err) {
+            showFormMessage(err.message || '删除失败，请稍后重试', 'error');
+          }
+        });
+      });
+    }
+
+    async function loadArticles() {
+      if (!articleListEl) return;
+      articleListEl.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">加载中...</div>';
       try {
-        const article = await api.getArticle(Number(id));
-        fillForm(article);
+        const list = await api.getArticles();
+        renderArticles(list || []);
       } catch (err) {
-        showFormMessage(err.message || '文章加载失败，请稍后重试', 'error');
+        console.error('文章列表加载失败：', err);
+        articleListEl.innerHTML = '<div class="col-span-full py-10 text-center text-sm text-slate-400">文章加载失败，请稍后重试</div>';
       }
+    }
+
+    // ----- 文章列表 折叠/展开（状态存 localStorage） -----
+    let articleListState = localStorage.getItem('articleListState') || 'expanded';
+    function applyListState() {
+      if (!articleListWrap || !collapseBtn) return;
+      if (articleListState === 'collapsed') {
+        articleListWrap.style.maxHeight = '0px';
+        collapseBtn.innerHTML = '▼ 展开';
+      } else {
+        articleListWrap.style.maxHeight = 'none';
+        collapseBtn.innerHTML = '▲ 收起';
+      }
+    }
+    function toggleListState() {
+      articleListState = articleListState === 'expanded' ? 'collapsed' : 'expanded';
+      localStorage.setItem('articleListState', articleListState);
+      applyListState();
     }
 
     // ----- 用户管理（仅 superadmin / admin 可见） -----
@@ -826,7 +871,6 @@
       const source = sourceInput.value.trim();
       if (!title) { showFormMessage('标题不能为空', 'error'); return; }
       if (!content.replace(/<[^>]*>/g, '').trim()) { showFormMessage('正文不能为空', 'error'); return; }
-
       submitBtn.disabled = true;
       submitBtn.textContent = editingId !== null ? '更新中...' : '发布中...';
       try {
@@ -836,16 +880,12 @@
           if (carouselVal !== undefined) payload.is_carousel = carouselVal;
           await api.updateArticle(editingId, payload);
           showFormMessage('文章更新成功', 'success');
-          await loadArticleOptions(editingId);
-          const refreshed = await api.getArticle(editingId);
-          fillForm(refreshed);
         } else {
-          const created = await api.createArticle(title, content, topic, formatNow(), image, source, currentUsername, carouselVal);
+          await api.createArticle(title, content, topic, formatNow(), image, source, currentUsername, carouselVal);
           showFormMessage('文章发布成功', 'success');
-          await loadArticleOptions(created.id);
-          const refreshed = await api.getArticle(created.id);
-          fillForm(refreshed);
         }
+        resetForm();
+        await loadArticles();
       } catch (err) {
         showFormMessage(err.message || '操作失败，请稍后重试', 'error');
       } finally {
@@ -854,87 +894,77 @@
       }
     });
 
-    cancelEditBtn.addEventListener('click', () => {
-      resetForm();
-      if (articleSelect) articleSelect.value = '';
-    });
-    if (articleSelect) articleSelect.addEventListener('change', handleArticleSelect);
-
-    if (formDeleteBtn) {
-      formDeleteBtn.addEventListener('click', async () => {
-        const id = editingId;
-        if (id === null || !confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
-        try {
-          await api.deleteArticle(id, currentUsername);
-          showFormMessage('删除成功', 'success');
-          resetForm();
-          if (articleSelect) articleSelect.value = '';
-          await loadArticleOptions();
-        } catch (err) {
-          showFormMessage(err.message || '删除失败，请稍后重试', 'error');
-        }
-      });
-    }
-
-    if (formCarouselBtn) {
-      formCarouselBtn.addEventListener('click', async () => {
-        const id = editingId;
-        if (id === null || !currentArticle) return;
-        const next = currentArticle.is_carousel ? 0 : 1;
-        try {
-          await api.updateArticle(id, { is_carousel: next, username: currentUsername });
-          showFormMessage(next ? '已设为轮播' : '已取消轮播', 'success');
-          const refreshed = await api.getArticle(id);
-          currentArticle = refreshed;
-          if (carouselCheck) carouselCheck.checked = !!refreshed.is_carousel;
-          updateContextButtons();
-          await loadArticleOptions(id);
-        } catch (err) {
-          showFormMessage(err.message || '操作失败，请稍后重试', 'error');
-        }
-      });
-    }
+    cancelEditBtn.addEventListener('click', resetForm);
+    if (refreshBtn) refreshBtn.addEventListener('click', loadArticles);
+    if (collapseBtn) collapseBtn.addEventListener('click', toggleListState);
 
     // ----- 初始化：按角色显示模块 -----
-    const canCreate = currentRole === 'superadmin' || currentRole === 'admin' || currentRole === 'creator';
-    const canAdmin = currentRole === 'superadmin' || currentRole === 'admin';
+    const canCreate = isAdminOrSuper || currentRole === 'creator';
+    const canAdmin = isAdminOrSuper;
     const tabCreatorEl = document.getElementById('uc-tab-creator');
     const tabAdminEl = document.getElementById('uc-tab-admin');
     if (canCreate && tabCreatorEl) tabCreatorEl.classList.remove('hidden');
     if (canAdmin && tabAdminEl) tabAdminEl.classList.remove('hidden');
     if (canSetCarousel && carouselCheckWrap) carouselCheckWrap.classList.remove('hidden');
 
+    // 普通用户：隐藏编辑区，仅显示提示
+    if (currentRole === 'user') {
+      if (userNoticeEl) userNoticeEl.classList.remove('hidden');
+      if (form) form.classList.add('hidden');
+      if (articleListWrap) articleListWrap.classList.add('hidden');
+    }
+
     renderProfile();
     loadProfileStats();
     if (canCreate) {
-      loadArticleOptions();
       resetForm();
+      loadArticles();
+      applyListState();
     }
     if (canAdmin) {
       loadUsers();
       loadAnnouncements();
     }
 
-    // ----- TinyMCE 富文本编辑器初始化 -----
-    if (window.tinymce) {
-      tinymce.init({
-        selector: '#article-content',
-        height: 400,
-        menubar: false,
-        branding: false,
-        plugins: 'lists link image',
-        toolbar: 'undo redo | formatselect | bold italic underline | bullist numlist | link image',
-        block_formats: '标题一=h1;标题二=h2;段落=p',
-        automatic_uploads: false,
-        images_upload_handler: (blobInfo) => new Promise((resolve, reject) => {
-          api.uploadImage(blobInfo.blob(), currentUsername)
-            .then(data => resolve(data.url))
-            .catch(err => reject(err && err.message ? err.message : '图片上传失败'));
-        }),
-        setup(editor) {
-          editor.on('init', () => { editorReady = true; });
+    // ----- Quill 富文本编辑器初始化 -----
+    if (window.Quill && document.getElementById('editor-container')) {
+      quillEditor = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: '请输入文章正文...',
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['link', 'image'],
+            ['clean']
+          ]
         }
       });
+      if (pendingEditorHtml) {
+        quillEditor.root.innerHTML = pendingEditorHtml;
+        pendingEditorHtml = '';
+      }
+      // 图片上传：对接 Supabase 后插入正文
+      const toolbar = quillEditor.getModule('toolbar');
+      if (toolbar) {
+        toolbar.addHandler('image', () => {
+          const input = document.createElement('input');
+          input.setAttribute('type', 'file');
+          input.setAttribute('accept', 'image/*');
+          input.click();
+          input.onchange = () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            api.uploadImage(file, currentUsername)
+              .then(result => {
+                const range = quillEditor.getSelection();
+                quillEditor.insertEmbed(range ? range.index : quillEditor.getLength(), 'image', result.url);
+              })
+              .catch(err => alert('图片上传失败：' + ((err && err.message) || '未知错误')));
+          };
+        });
+      }
     }
   </script>
 
@@ -977,6 +1007,10 @@
     .role-admin { background: #dbeafe; color: #1d4ed8; }
     .role-creator { background: #dcfce7; color: #15803d; }
     .role-user { background: #f1f5f9; color: #64748b; }
+
+    /* Quill 富文本编辑器 */
+    #editor-container .ql-container { min-height: 320px; font-size: 15px; }
+    #editor-container .ql-editor { min-height: 300px; line-height: 1.75; }
   </style>
 </body>
 </html>
