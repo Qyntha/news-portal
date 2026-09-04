@@ -52,6 +52,7 @@
   </style>
   <script src="data.js"></script>
   <script src="api.js"></script>
+  <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
   <script>
     // 登录保护：未登录用户自动跳转回首页（普通用户可查看个人中心，但看不到创作者/管理模块）
     if (localStorage.getItem('isLoggedIn') !== 'true') {
@@ -159,19 +160,17 @@
 
     <!-- 模块2 · 创作者中心（creator/admin/superadmin 可见） -->
     <section id="panel-creator" class="uc-panel hidden">
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-      <!-- 左栏 · 文章列表 -->
-      <section class="lg:col-span-3 bg-white rounded-xl shadow-card p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-slate-800">文章列表</h2>
-          <button id="refresh-btn" class="text-xs text-brand-500 hover:text-brand-700 transition">刷新</button>
+      <div class="bg-white rounded-xl shadow-card p-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h2 id="form-title" class="text-lg font-bold text-slate-800">发布文章</h2>
+          <div class="flex items-center gap-2">
+            <label for="article-select" class="text-xs text-slate-400 shrink-0">选择文章编辑：</label>
+            <select id="article-select"
+                    class="max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition">
+              <option value="">-- 新建文章 --</option>
+            </select>
+          </div>
         </div>
-        <div id="article-list" class="space-y-4"></div>
-      </section>
-
-      <!-- 右栏 · 发布/编辑表单 -->
-      <section class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
-        <h2 id="form-title" class="text-lg font-bold text-slate-800 mb-4">发布文章</h2>
         <form id="article-form" class="space-y-4" novalidate>
           <div>
             <label for="article-title" class="block text-sm text-slate-600 mb-1.5">标题 <span class="text-red-500">*</span></label>
@@ -179,8 +178,8 @@
                    class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
           </div>
           <div>
-            <label for="article-content" class="block text-sm text-slate-600 mb-1.5">正文 <span class="text-red-500">*</span></label>
-            <textarea id="article-content" rows="8" placeholder="请输入文章正文，多个段落用空行分隔"
+            <label for="article-content" class="block text-sm text-slate-600 mb-1.5">正文（支持富文本） <span class="text-red-500">*</span></label>
+            <textarea id="article-content" rows="8" placeholder="请输入文章正文"
                       class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y"></textarea>
           </div>
           <div>
@@ -222,12 +221,13 @@
             </label>
           </div>
           <p id="form-message" class="text-xs min-h-[18px] leading-relaxed"></p>
-          <div class="flex gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <button type="submit" id="submit-btn" class="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发布文章</button>
             <button type="button" id="cancel-edit-btn" class="hidden px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">取消编辑</button>
+            <button type="button" id="form-carousel-btn" class="hidden px-4 py-2.5 rounded-lg text-white text-xs font-semibold transition"></button>
+            <button type="button" id="form-delete-btn" class="hidden px-4 py-2.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition">删除文章</button>
           </div>
         </form>
-      </section>
       </div>
     </section>
 
@@ -383,9 +383,9 @@
       }
     }
 
-    // ----- 创作者中心：文章列表与表单 -----
-    const articleListEl = document.getElementById('article-list');
+    // ----- 创作者中心：下拉选文章 + 富文本编辑 -----
     const form = document.getElementById('article-form');
+    const articleSelect = document.getElementById('article-select');
     const titleInput = document.getElementById('article-title');
     const contentInput = document.getElementById('article-content');
     const topicSelect = document.getElementById('article-topic');
@@ -395,10 +395,13 @@
     const carouselCheck = document.getElementById('article-carousel');
     const submitBtn = document.getElementById('submit-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const formDeleteBtn = document.getElementById('form-delete-btn');
+    const formCarouselBtn = document.getElementById('form-carousel-btn');
     const formTitleEl = document.getElementById('form-title');
     const formMessageEl = document.getElementById('form-message');
-    const refreshBtn = document.getElementById('refresh-btn');
     let editingId = null;
+    let currentArticle = null;
+    let editorReady = false;
     const canSetCarousel = currentRole === 'superadmin' || currentRole === 'admin';
 
     // ----- 图片上传（Supabase Storage） -----
@@ -509,19 +512,51 @@
       cancelEditBtn.classList.toggle('hidden', !isEdit);
     }
 
+    function updateContextButtons() {
+      const isEdit = editingId !== null;
+      if (formDeleteBtn) formDeleteBtn.classList.toggle('hidden', !isEdit);
+      if (formCarouselBtn) {
+        const show = isEdit && canSetCarousel;
+        formCarouselBtn.classList.toggle('hidden', !show);
+        if (show && currentArticle) {
+          formCarouselBtn.textContent = currentArticle.is_carousel ? '取消轮播' : '设为轮播';
+          formCarouselBtn.className = (currentArticle.is_carousel ? 'bg-slate-500 hover:bg-slate-600' : 'bg-yellow-500 hover:bg-yellow-600') +
+            ' px-4 py-2.5 rounded-lg text-white text-xs font-semibold transition';
+        }
+      }
+      const canEdit = currentRole === 'superadmin' || currentRole === 'admin' || (currentArticle && currentArticle.author === currentUsername);
+      submitBtn.disabled = isEdit && !canEdit;
+    }
+
+    function getEditorContent() {
+      const ed = window.tinymce && tinymce.get('article-content');
+      return ed ? ed.getContent() : contentInput.value;
+    }
+
+    function setEditorContent(html) {
+      const ed = window.tinymce && tinymce.get('article-content');
+      if (ed) ed.setContent(html || '');
+      else contentInput.value = html || '';
+    }
+
     function resetForm() {
       editingId = null;
+      currentArticle = null;
       form.reset();
       topicSelect.value = '';
       resetImageUpload();
+      setEditorContent('');
+      submitBtn.disabled = false;
       setFormMode('create');
+      updateContextButtons();
       showFormMessage('', '');
     }
 
     function fillForm(article) {
       editingId = article.id;
+      currentArticle = article;
       titleInput.value = article.title || '';
-      contentInput.value = Array.isArray(article.content) ? article.content.join('\n\n') : String(article.content || '');
+      setEditorContent(article.content || '');
       topicSelect.value = article.topic || '';
       imageInput.value = article.image || '';
       sourceInput.value = article.source || '';
@@ -533,92 +568,42 @@
         if (imagePreview) imagePreview.src = '';
       }
       setFormMode('edit');
+      updateContextButtons();
       showFormMessage('', '');
       form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function statusLabel(article) {
-      return article.status || '已发布';
+    function truncateTitle(t) {
+      t = String(t || '');
+      return t.length > 26 ? t.slice(0, 26) + '…' : t;
     }
 
-    function renderArticles(list) {
-      if (!articleListEl) return;
-      if (!list || !list.length) {
-        articleListEl.innerHTML = '<div class="py-16 text-center text-sm text-slate-400">暂无文章，开始创作吧！</div>';
-        return;
-      }
-      const sorted = list.slice().sort((a, b) => b.id - a.id);
-      articleListEl.innerHTML = sorted.map(a => {
-        const canManage = currentRole === 'superadmin' || currentRole === 'admin' || a.author === currentUsername;
-        return `
-          <div class="border border-slate-100 rounded-xl p-4 hover:shadow-card transition">
-            <div class="flex items-start justify-between gap-3 flex-wrap">
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
-                  <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '未分类'}</span>
-                  <span>${a.time || ''}</span>
-                  <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
-                  ${a.is_carousel ? '<span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">轮播中</span>' : ''}
-                </div>
-                <h3 class="mt-1.5 text-sm font-bold text-slate-800 truncate">${a.title}</h3>
-                <div class="mt-1 text-xs text-slate-400">作者：${escapeHtml(a.author || '未知')} | 来源：${escapeHtml(a.source || '相思门户网')}</div>
-              </div>
-              ${canManage ? `
-                <div class="flex items-center gap-2 shrink-0">
-                  <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
-                  <button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>
-                  ${canSetCarousel ? `<button type="button" class="carousel-btn px-3 py-1.5 rounded-lg ${a.is_carousel ? 'bg-slate-500' : 'bg-yellow-500'} text-white text-xs font-medium hover:opacity-90 transition" data-id="${a.id}" data-set="${a.is_carousel ? 0 : 1}">${a.is_carousel ? '取消轮播' : '设为轮播'}</button>` : ''}
-                </div>
-              ` : '<span class="text-xs text-slate-300 shrink-0">仅作者可操作</span>'}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      articleListEl.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const article = sorted.find(x => x.id === Number(btn.dataset.id));
-          if (article) fillForm(article);
-        });
-      });
-      articleListEl.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = Number(btn.dataset.id);
-          if (!confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
-          try {
-            await api.deleteArticle(id, currentUsername);
-            showFormMessage('删除成功', 'success');
-            if (editingId === id) resetForm();
-            await loadArticles();
-          } catch (err) {
-            showFormMessage(err.message || '删除失败，请稍后重试', 'error');
-          }
-        });
-      });
-      articleListEl.querySelectorAll('.carousel-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = Number(btn.dataset.id);
-          const set = Number(btn.dataset.set);
-          try {
-            await api.updateArticle(id, { is_carousel: set, username: currentUsername });
-            showFormMessage(set ? '已设为轮播' : '已取消轮播', 'success');
-            await loadArticles();
-          } catch (err) {
-            showFormMessage(err.message || '操作失败，请稍后重试', 'error');
-          }
-        });
-      });
-    }
-
-    async function loadArticles() {
-      if (!articleListEl) return;
-      articleListEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">加载中...</div>';
+    async function loadArticleOptions(selectedId) {
+      if (!articleSelect) return;
       try {
         const list = await api.getArticles();
-        renderArticles(list || []);
+        const sorted = (list || []).slice().sort((a, b) => b.id - a.id);
+        articleSelect.innerHTML = '<option value="">-- 新建文章 --</option>' + sorted.map(a =>
+          `<option value="${a.id}">${escapeHtml(truncateTitle(a.title))}（${escapeHtml(a.topic || '未分类')}）</option>`
+        ).join('');
+        if (selectedId !== undefined && selectedId !== null) articleSelect.value = String(selectedId);
       } catch (err) {
         console.error('文章列表加载失败：', err);
-        articleListEl.innerHTML = '<div class="py-10 text-center text-sm text-slate-400">文章加载失败，请稍后重试</div>';
+        articleSelect.innerHTML = '<option value="">-- 新建文章 --</option>';
+      }
+    }
+
+    async function handleArticleSelect() {
+      const id = articleSelect.value;
+      if (!id) {
+        resetForm();
+        return;
+      }
+      try {
+        const article = await api.getArticle(Number(id));
+        fillForm(article);
+      } catch (err) {
+        showFormMessage(err.message || '文章加载失败，请稍后重试', 'error');
       }
     }
 
@@ -835,29 +820,32 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const title = titleInput.value.trim();
-      const content = contentInput.value.trim();
+      const content = getEditorContent() || '';
       const topic = topicSelect.value;
       const image = imageInput.value.trim();
       const source = sourceInput.value.trim();
       if (!title) { showFormMessage('标题不能为空', 'error'); return; }
-      if (!content) { showFormMessage('正文不能为空', 'error'); return; }
-      const contentParagraphs = content.split(/\n+/).map(s => s.trim()).filter(Boolean);
+      if (!content.replace(/<[^>]*>/g, '').trim()) { showFormMessage('正文不能为空', 'error'); return; }
 
       submitBtn.disabled = true;
       submitBtn.textContent = editingId !== null ? '更新中...' : '发布中...';
       try {
         const carouselVal = canSetCarousel && carouselCheck ? (carouselCheck.checked ? 1 : 0) : undefined;
         if (editingId !== null) {
-          const payload = { title, content: contentParagraphs, topic, image, source, username: currentUsername };
+          const payload = { title, content, topic, image, source, username: currentUsername };
           if (carouselVal !== undefined) payload.is_carousel = carouselVal;
           await api.updateArticle(editingId, payload);
           showFormMessage('文章更新成功', 'success');
+          await loadArticleOptions(editingId);
+          const refreshed = await api.getArticle(editingId);
+          fillForm(refreshed);
         } else {
-          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source, currentUsername, carouselVal);
+          const created = await api.createArticle(title, content, topic, formatNow(), image, source, currentUsername, carouselVal);
           showFormMessage('文章发布成功', 'success');
+          await loadArticleOptions(created.id);
+          const refreshed = await api.getArticle(created.id);
+          fillForm(refreshed);
         }
-        resetForm();
-        await loadArticles();
       } catch (err) {
         showFormMessage(err.message || '操作失败，请稍后重试', 'error');
       } finally {
@@ -866,8 +854,46 @@
       }
     });
 
-    cancelEditBtn.addEventListener('click', resetForm);
-    refreshBtn.addEventListener('click', loadArticles);
+    cancelEditBtn.addEventListener('click', () => {
+      resetForm();
+      if (articleSelect) articleSelect.value = '';
+    });
+    if (articleSelect) articleSelect.addEventListener('change', handleArticleSelect);
+
+    if (formDeleteBtn) {
+      formDeleteBtn.addEventListener('click', async () => {
+        const id = editingId;
+        if (id === null || !confirm('确定要删除这篇文章吗？删除后不可恢复。')) return;
+        try {
+          await api.deleteArticle(id, currentUsername);
+          showFormMessage('删除成功', 'success');
+          resetForm();
+          if (articleSelect) articleSelect.value = '';
+          await loadArticleOptions();
+        } catch (err) {
+          showFormMessage(err.message || '删除失败，请稍后重试', 'error');
+        }
+      });
+    }
+
+    if (formCarouselBtn) {
+      formCarouselBtn.addEventListener('click', async () => {
+        const id = editingId;
+        if (id === null || !currentArticle) return;
+        const next = currentArticle.is_carousel ? 0 : 1;
+        try {
+          await api.updateArticle(id, { is_carousel: next, username: currentUsername });
+          showFormMessage(next ? '已设为轮播' : '已取消轮播', 'success');
+          const refreshed = await api.getArticle(id);
+          currentArticle = refreshed;
+          if (carouselCheck) carouselCheck.checked = !!refreshed.is_carousel;
+          updateContextButtons();
+          await loadArticleOptions(id);
+        } catch (err) {
+          showFormMessage(err.message || '操作失败，请稍后重试', 'error');
+        }
+      });
+    }
 
     // ----- 初始化：按角色显示模块 -----
     const canCreate = currentRole === 'superadmin' || currentRole === 'admin' || currentRole === 'creator';
@@ -880,10 +906,35 @@
 
     renderProfile();
     loadProfileStats();
-    if (canCreate) loadArticles();
+    if (canCreate) {
+      loadArticleOptions();
+      resetForm();
+    }
     if (canAdmin) {
       loadUsers();
       loadAnnouncements();
+    }
+
+    // ----- TinyMCE 富文本编辑器初始化 -----
+    if (window.tinymce) {
+      tinymce.init({
+        selector: '#article-content',
+        height: 400,
+        menubar: false,
+        branding: false,
+        plugins: 'lists link image',
+        toolbar: 'undo redo | formatselect | bold italic underline | bullist numlist | link image',
+        block_formats: '标题一=h1;标题二=h2;段落=p',
+        automatic_uploads: false,
+        images_upload_handler: (blobInfo) => new Promise((resolve, reject) => {
+          api.uploadImage(blobInfo.blob(), currentUsername)
+            .then(data => resolve(data.url))
+            .catch(err => reject(err && err.message ? err.message : '图片上传失败'));
+        }),
+        setup(editor) {
+          editor.on('init', () => { editorReady = true; });
+        }
+      });
     }
   </script>
 

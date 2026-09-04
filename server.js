@@ -129,11 +129,10 @@ app.post('/api/articles', async (req, res) => {
     if (is_carousel !== undefined && user.role !== 'superadmin' && user.role !== 'admin') {
       return res.status(403).json({ success: false, message: '无权设置轮播' });
     }
-    const contentStr = JSON.stringify(content);
     const stmt = db.prepare(
       'INSERT INTO articles (title, content, topic, time, image, source, author, is_carousel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = stmt.run(title, contentStr, topic || '', time || new Date().toISOString(), image || '', source || '', username, is_carousel ? 1 : 0);
+    const info = stmt.run(title, content, topic || '', time || new Date().toISOString(), image || '', source || '', username, is_carousel ? 1 : 0);
     res.json({ success: true, id: info.lastInsertRowid, message: '发布成功' });
   } catch (error) {
     console.error('发布文章失败:', error);
@@ -145,8 +144,7 @@ app.post('/api/articles', async (req, res) => {
 app.get('/api/carousel', async (req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM articles WHERE is_carousel = 1 ORDER BY id DESC LIMIT 5').all();
-    const result = rows.map(a => ({ ...a, content: JSON.parse(a.content) }));
-    res.json(result);
+    res.json(rows);
   } catch (error) {
     console.error('获取轮播文章失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
@@ -157,12 +155,7 @@ app.get('/api/carousel', async (req, res) => {
 app.get('/api/articles', async (req, res) => {
   try {
     const articles = db.prepare('SELECT * FROM articles ORDER BY id DESC').all();
-    // 将 content 从 JSON 字符串还原为数组
-    const result = articles.map(a => ({
-      ...a,
-      content: JSON.parse(a.content)
-    }));
-    res.json(result);
+    res.json(articles);
   } catch (error) {
     console.error('获取文章列表失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
@@ -208,7 +201,6 @@ app.get('/api/articles/:id', async (req, res) => {
     if (!article) {
       return res.status(404).json({ success: false, message: '文章不存在' });
     }
-    article.content = JSON.parse(article.content);
     res.json(article);
   } catch (error) {
     console.error('获取文章失败:', error);
@@ -246,7 +238,7 @@ app.put('/api/articles/:id', async (req, res) => {
     const updates = [];
     const values = [];
     if (title !== undefined) { updates.push('title = ?'); values.push(title); }
-    if (content !== undefined) { updates.push('content = ?'); values.push(JSON.stringify(content)); }
+    if (content !== undefined) { updates.push('content = ?'); values.push(content); }
     if (topic !== undefined) { updates.push('topic = ?'); values.push(topic); }
     if (time !== undefined) { updates.push('time = ?'); values.push(time); }
     if (image !== undefined) { updates.push('image = ?'); values.push(image); }

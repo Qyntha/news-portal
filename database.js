@@ -103,6 +103,29 @@ if (aboutCount === 0) {
   console.log('✅ 已插入示例「关于我们」文章');
 }
 
+// ---- 旧版 content（JSON 数组字符串）→ HTML 段落 迁移 ----
+const contentRows = db.prepare('SELECT id, content FROM articles').all();
+let migratedContent = 0;
+const contentUpdate = db.prepare('UPDATE articles SET content = ? WHERE id = ?');
+for (const row of contentRows) {
+  const raw = String(row.content || '').trim();
+  if (raw.startsWith('[')) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        const html = arr.map(p => `<p>${String(p)}</p>`).join('');
+        contentUpdate.run(html, row.id);
+        migratedContent++;
+      }
+    } catch (e) {
+      // 非 JSON 内容保持不变
+    }
+  }
+}
+if (migratedContent > 0) {
+  console.log(`✅ 已将 ${migratedContent} 篇文章的 content 由 JSON 数组转为 HTML`);
+}
+
 // 旧库刚补 created_at 列：为老用户补上注册时间（以当前时间近似）
 if (createdAdded) {
   const d = new Date();
