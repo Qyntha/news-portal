@@ -375,7 +375,7 @@ app.get('/api/articles/:id/comments', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: '文章不存在' });
     }
-    const comments = db.prepare('SELECT * FROM comments WHERE articleId = ? ORDER BY id DESC').all(articleId);
+    const comments = db.prepare('SELECT * FROM comments WHERE articleId = ? ORDER BY id ASC').all(articleId);
     res.json(comments);
   } catch (error) {
     console.error('获取评论失败:', error);
@@ -391,15 +391,27 @@ app.post('/api/articles/:id/comments', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: '文章不存在' });
     }
-    const { username, content } = req.body || {};
+    const { username, content, parent_id, reply_to_username } = req.body || {};
     if (!username || !content || !String(content).trim()) {
       return res.status(400).json({ success: false, message: '评论内容不能为空' });
+    }
+    // 若为回复，校验被回复评论属于同一篇文章
+    let parentId = null;
+    if (parent_id !== undefined && parent_id !== null && parent_id !== '') {
+      parentId = Number(parent_id);
+      if (!Number.isInteger(parentId)) {
+        return res.status(400).json({ success: false, message: '回复目标无效' });
+      }
+      const parent = db.prepare('SELECT id, articleId FROM comments WHERE id = ?').get(parentId);
+      if (!parent || parent.articleId !== articleId) {
+        return res.status(400).json({ success: false, message: '回复目标不存在或不属于该文章' });
+      }
     }
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const time = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    const stmt = db.prepare('INSERT INTO comments (articleId, username, content, time) VALUES (?, ?, ?, ?)');
-    const info = stmt.run(articleId, username, String(content).trim(), time);
+    const stmt = db.prepare('INSERT INTO comments (articleId, username, content, time, parent_id, reply_to_username) VALUES (?, ?, ?, ?, ?, ?)');
+    const info = stmt.run(articleId, username, String(content).trim(), time, parentId, reply_to_username || '');
     const newComment = db.prepare('SELECT * FROM comments WHERE id = ?').get(info.lastInsertRowid);
     res.json({ success: true, id: info.lastInsertRowid, comment: newComment, message: '评论成功' });
   } catch (error) {

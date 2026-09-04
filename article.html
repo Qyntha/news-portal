@@ -297,21 +297,131 @@
           listEl.innerHTML = '<p class="text-sm text-slate-400">暂无评论，快来抢沙发～</p>';
           return;
         }
-        listEl.innerHTML = comments.map(c => `
-          <div class="flex gap-3">
-            <div class="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold shrink-0">${escapeHtml((c.username || '用').slice(0, 1))}</div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 text-sm">
-                <span class="font-semibold text-slate-700">${escapeHtml(c.username)}</span>
-                <span class="text-xs text-slate-400">${escapeHtml(c.time || '')}</span>
-              </div>
-              <p class="mt-1 text-sm text-slate-600 leading-relaxed break-words">${escapeHtml(c.content)}</p>
-            </div>
-          </div>
-        `).join('');
+        // 构建评论树：主评论 + 子回复（接口已按 id 正序返回）
+        const mains = comments.filter(c => !c.parent_id);
+        const mainMap = new Map(mains.map(m => [m.id, m]));
+        comments.filter(c => c.parent_id).forEach(r => {
+          const parent = mainMap.get(r.parent_id);
+          if (parent) {
+            if (!parent.replies) parent.replies = [];
+            parent.replies.push(r);
+          } else {
+            mains.push(r); // 兼容异常数据
+          }
+        });
+        listEl.innerHTML = mains.map((m, i) => renderMainComment(m, i + 1)).join('');
+        bindCommentEvents();
       } catch (err) {
         listEl.innerHTML = `<p class="text-sm text-slate-400">评论加载失败：${escapeHtml(err.message || '请稍后重试')}</p>`;
       }
+    }
+
+    function renderMainComment(comment, floor) {
+      const replies = comment.replies || [];
+      const showMore = replies.length > 3;
+      const shown = showMore ? replies.slice(0, 3) : replies;
+      const rest = showMore ? replies.slice(3) : [];
+      return `
+        <div class="bg-slate-50 rounded-xl p-4" data-main-id="${comment.id}">
+          <div class="flex items-center gap-2 text-sm flex-wrap">
+            <span class="font-bold text-brand-600 text-xs shrink-0">#${floor}楼</span>
+            <span class="font-semibold text-slate-700">${escapeHtml(comment.username)}</span>
+            <span class="text-xs text-slate-400">${escapeHtml(comment.time || '')}</span>
+            <button type="button" class="reply-open ml-auto text-xs text-slate-400 hover:text-brand-600 transition shrink-0" data-reply-to="${escapeHtml(comment.username)}">回复</button>
+          </div>
+          <p class="mt-1.5 text-sm text-slate-700 leading-relaxed break-words">${escapeHtml(comment.content)}</p>
+          ${replies.length ? `
+            <div class="mt-2 ml-6 border-l-2 border-slate-200 pl-3 space-y-2">
+              ${shown.map(r => renderReply(r)).join('')}
+              ${showMore ? `
+                <button type="button" class="reply-more text-xs text-brand-500 hover:text-brand-700 transition" data-original="查看全部 ${replies.length} 条回复">查看全部 ${replies.length} 条回复</button>
+                <div class="hidden space-y-2">${rest.map(r => renderReply(r)).join('')}</div>
+              ` : ''}
+            </div>
+          ` : ''}
+          <div class="reply-box mt-2 hidden"></div>
+        </div>
+      `;
+    }
+
+    function renderReply(reply) {
+      return `
+        <div class="text-sm">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-slate-600">${escapeHtml(reply.username)}</span>
+            <span class="text-xs text-slate-400">${escapeHtml(reply.time || '')}</span>
+            <button type="button" class="reply-open text-xs text-slate-400 hover:text-brand-600 transition shrink-0" data-reply-to="${escapeHtml(reply.username)}">回复</button>
+          </div>
+          <p class="mt-0.5 text-slate-600 leading-relaxed break-words"><span class="text-brand-500">回复 @${escapeHtml(reply.reply_to_username || reply.username)}：</span>${escapeHtml(reply.content)}</p>
+        </div>
+      `;
+    }
+
+    function bindCommentEvents() {
+      const listEl = document.getElementById('comment-list');
+      if (!listEl) return;
+      listEl.querySelectorAll('.reply-open').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rootEl = btn.closest('[data-main-id]');
+          const box = rootEl ? rootEl.querySelector('.reply-box') : null;
+          if (!box || !rootEl) return;
+          openReplyBox(box, rootEl.dataset.mainId, btn.dataset.replyTo || '');
+        });
+      });
+      listEl.querySelectorAll('.reply-more').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hiddenWrap = btn.nextElementSibling;
+          if (!hiddenWrap) return;
+          const collapsed = hiddenWrap.classList.contains('hidden');
+          hiddenWrap.classList.toggle('hidden');
+          btn.textContent = collapsed ? '收起回复' : (btn.dataset.original || '收起回复');
+        });
+      });
+    }
+
+    function openReplyBox(box, mainId, replyTo) {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const currentUser = localStorage.getItem('username') || '';
+      if (!isLoggedIn) {
+        box.classList.remove('hidden');
+        box.innerHTML = `
+          <div class="text-sm text-slate-500 mb-2">登录后即可回复</div>
+          <button data-auth="login" class="px-4 py-1.5 rounded-full text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 transition">立即登录</button>
+        `;
+        return;
+      }
+      box.classList.remove('hidden');
+      box.innerHTML = `
+        <div class="bg-white rounded-lg border border-slate-200 p-3">
+          <p class="text-xs text-slate-400 mb-2">回复 @${escapeHtml(replyTo || '楼主')}（身份：${escapeHtml(currentUser)}）</p>
+          <textarea class="reply-input w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition resize-y" rows="2" placeholder="写下你的回复…"></textarea>
+          <div class="mt-2 flex items-center justify-between gap-3">
+            <span class="reply-err text-xs text-red-500 min-h-[16px] leading-relaxed"></span>
+            <button type="button" class="reply-submit px-4 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition">提交回复</button>
+          </div>
+        </div>
+      `;
+      const input = box.querySelector('.reply-input');
+      box.querySelector('.reply-submit').addEventListener('click', async () => {
+        const errEl = box.querySelector('.reply-err');
+        const content = input.value.trim();
+        const cur = localStorage.getItem('username') || '';
+        if (!content) {
+          if (errEl) errEl.textContent = '回复内容不能为空';
+          return;
+        }
+        const submitBtn = box.querySelector('.reply-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '提交中...';
+        try {
+          await api.addComment(currentArticleId, cur, content, Number(mainId), replyTo);
+          await loadComments();
+        } catch (err) {
+          if (errEl) errEl.textContent = err.message || '回复失败，请稍后重试';
+          submitBtn.disabled = false;
+          submitBtn.textContent = '提交回复';
+        }
+      });
     }
 
     function renderCommentForm() {

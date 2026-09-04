@@ -62,9 +62,12 @@ function getComments(articleId) {
   return request(`/api/articles/${articleId}/comments`);
 }
 
-// 发表评论：POST /api/articles/:id/comments
-function addComment(articleId, username, content) {
-  return postJSON(`/api/articles/${articleId}/comments`, { username, content });
+// 发表评论/回复：POST /api/articles/:id/comments
+function addComment(articleId, username, content, parentId, replyToUsername) {
+  const body = { username, content };
+  if (parentId !== undefined && parentId !== null) body.parent_id = parentId;
+  if (replyToUsername) body.reply_to_username = replyToUsername;
+  return postJSON(`/api/articles/${articleId}/comments`, body);
 }
 
 // 发布文章：POST /api/articles
