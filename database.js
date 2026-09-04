@@ -32,7 +32,8 @@ db.exec(`
     time TEXT DEFAULT '',
     image TEXT DEFAULT '',
     source TEXT DEFAULT '',
-    author TEXT DEFAULT ''
+    author TEXT DEFAULT '',
+    is_carousel INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS comments (
@@ -68,6 +69,7 @@ function ensureColumn(table, column, definition) {
 }
 ensureColumn('users', 'role', "TEXT DEFAULT 'user'");
 ensureColumn('articles', 'author', "TEXT DEFAULT ''");
+ensureColumn('articles', 'is_carousel', 'INTEGER DEFAULT 0');
 const createdAdded = ensureColumn('users', 'created_at', "TEXT DEFAULT ''");
 
 // 旧库刚补 role 列：此前所有注册用户均可发布，统一恢复为管理员身份（仅迁移时执行一次）
@@ -80,6 +82,21 @@ if (addedRoleColumn) {
 if (addedAuthorColumn) {
   const authorFixed = db.prepare("UPDATE articles SET author = 'admin' WHERE author IS NULL OR author = ''").run();
   console.log(`✅ 已为 ${authorFixed.changes} 篇老文章设置作者 admin`);
+}
+
+// ---- 示例「关于我们」文章（无该专题文章时插入，供频道精选展示） ----
+const aboutCount = db.prepare("SELECT COUNT(*) AS n FROM articles WHERE topic = '关于我们'").get().n;
+if (aboutCount === 0) {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const sample = JSON.stringify([
+    '相思门户网是一个轻量级新闻资讯平台，聚合本地视野与全球资讯。',
+    '我们坚持真实、及时、贴近生活的报道理念，欢迎每一位创作者与读者的参与。'
+  ]);
+  db.prepare("INSERT INTO articles (title, content, topic, time, image, source, author, is_carousel) VALUES ('关于我们', ?, '关于我们', ?, '', '相思门户网', 'admin', 0)")
+    .run(sample, ts);
+  console.log('✅ 已插入示例「关于我们」文章');
 }
 
 // 旧库刚补 created_at 列：为老用户补上注册时间（以当前时间近似）

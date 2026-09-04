@@ -47,6 +47,11 @@ function getArticles() {
   return request('/api/articles');
 }
 
+// 获取轮播文章：GET /api/carousel
+function getCarousel() {
+  return request('/api/carousel');
+}
+
 // 获取单篇文章：GET /api/articles/:id
 function getArticle(id) {
   return request(`/api/articles/${id}`);
@@ -63,8 +68,10 @@ function addComment(articleId, username, content) {
 }
 
 // 发布文章：POST /api/articles
-function createArticle(title, content, topic, time, image, source, username) {
-  return postJSON('/api/articles', { title, content, topic, time, image, source, username });
+function createArticle(title, content, topic, time, image, source, username, is_carousel) {
+  const body = { title, content, topic, time, image, source, username };
+  if (is_carousel !== undefined) body.is_carousel = is_carousel ? 1 : 0;
+  return postJSON('/api/articles', body);
 }
 
 // 更新文章：PUT /api/articles/:id
@@ -128,5 +135,5 @@ function uploadImage(file, username) {
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
+  window.api = { register, login, getArticles, getCarousel, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
 }

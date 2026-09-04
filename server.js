@@ -111,7 +111,7 @@ app.post('/api/login', async (req, res) => {
 
 // ---- 发布文章 ----
 app.post('/api/articles', async (req, res) => {
-  const { title, content, topic, time, image, source, username } = req.body || {};
+  const { title, content, topic, time, image, source, username, is_carousel } = req.body || {};
   if (!title || !content) {
     return res.status(400).json({ success: false, message: '标题和内容不能为空' });
   }
@@ -126,14 +126,29 @@ app.post('/api/articles', async (req, res) => {
     if (user.role === 'user') {
       return res.status(403).json({ success: false, message: '普通用户无权发布文章' });
     }
+    if (is_carousel !== undefined && user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权设置轮播' });
+    }
     const contentStr = JSON.stringify(content);
     const stmt = db.prepare(
-      'INSERT INTO articles (title, content, topic, time, image, source, author) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO articles (title, content, topic, time, image, source, author, is_carousel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = stmt.run(title, contentStr, topic || '', time || new Date().toISOString(), image || '', source || '', username);
+    const info = stmt.run(title, contentStr, topic || '', time || new Date().toISOString(), image || '', source || '', username, is_carousel ? 1 : 0);
     res.json({ success: true, id: info.lastInsertRowid, message: '发布成功' });
   } catch (error) {
     console.error('发布文章失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 轮播文章：GET /api/carousel ----
+app.get('/api/carousel', async (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM articles WHERE is_carousel = 1 ORDER BY id DESC LIMIT 5').all();
+    const result = rows.map(a => ({ ...a, content: JSON.parse(a.content) }));
+    res.json(result);
+  } catch (error) {
+    console.error('获取轮播文章失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
@@ -150,6 +165,37 @@ app.get('/api/articles', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('获取文章列表失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 批量设置轮播：POST /api/admin/carousel ----
+app.post('/api/admin/carousel', async (req, res) => {
+  try {
+    const { articleIds, username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权设置轮播' });
+    }
+    if (!Array.isArray(articleIds)) {
+      return res.status(400).json({ success: false, message: '参数不完整' });
+    }
+    // 先全部取消，再设置指定文章
+    db.prepare('UPDATE articles SET is_carousel = 0').run();
+    const stmt = db.prepare('UPDATE articles SET is_carousel = 1 WHERE id = ?');
+    const tx = db.transaction(ids => {
+      for (const id of ids) stmt.run(Number(id));
+    });
+    tx(articleIds.filter(id => Number.isFinite(Number(id))));
+    res.json({ success: true, message: '轮播设置已更新' });
+  } catch (error) {
+    console.error('设置轮播失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
@@ -174,7 +220,7 @@ app.get('/api/articles/:id', async (req, res) => {
 app.put('/api/articles/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { title, content, topic, time, image, source, username } = req.body || {};
+    const { title, content, topic, time, image, source, username, is_carousel } = req.body || {};
     if (!username) {
       return res.status(401).json({ success: false, message: '请先登录' });
     }
@@ -184,6 +230,9 @@ app.put('/api/articles/:id', async (req, res) => {
     }
     if (user.role === 'user') {
       return res.status(403).json({ success: false, message: '普通用户无权编辑文章' });
+    }
+    if (is_carousel !== undefined && user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无权设置轮播' });
     }
     const existing = db.prepare('SELECT id, author FROM articles WHERE id = ?').get(id);
     if (!existing) {
@@ -202,6 +251,7 @@ app.put('/api/articles/:id', async (req, res) => {
     if (time !== undefined) { updates.push('time = ?'); values.push(time); }
     if (image !== undefined) { updates.push('image = ?'); values.push(image); }
     if (source !== undefined) { updates.push('source = ?'); values.push(source); }
+    if (is_carousel !== undefined) { updates.push('is_carousel = ?'); values.push(is_carousel ? 1 : 0); }
     if (updates.length === 0) {
       return res.status(400).json({ success: false, message: '没有提供任何更新字段' });
     }

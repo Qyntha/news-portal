@@ -215,6 +215,12 @@
             <input id="article-source" type="text" placeholder="留空则显示：相思门户网"
                    class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
           </div>
+          <div id="carousel-check-wrap" class="hidden">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input id="article-carousel" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200" />
+              <span class="text-sm text-slate-600">显示在轮播中（今日头条）</span>
+            </label>
+          </div>
           <p id="form-message" class="text-xs min-h-[18px] leading-relaxed"></p>
           <div class="flex gap-3">
             <button type="submit" id="submit-btn" class="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition">发布文章</button>
@@ -385,12 +391,15 @@
     const topicSelect = document.getElementById('article-topic');
     const imageInput = document.getElementById('article-image');
     const sourceInput = document.getElementById('article-source');
+    const carouselCheckWrap = document.getElementById('carousel-check-wrap');
+    const carouselCheck = document.getElementById('article-carousel');
     const submitBtn = document.getElementById('submit-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
     const formTitleEl = document.getElementById('form-title');
     const formMessageEl = document.getElementById('form-message');
     const refreshBtn = document.getElementById('refresh-btn');
     let editingId = null;
+    const canSetCarousel = currentRole === 'superadmin' || currentRole === 'admin';
 
     // ----- 图片上传（Supabase Storage） -----
     const imageDropZone = document.getElementById('image-drop-zone');
@@ -516,6 +525,7 @@
       topicSelect.value = article.topic || '';
       imageInput.value = article.image || '';
       sourceInput.value = article.source || '';
+      if (carouselCheck) carouselCheck.checked = !!article.is_carousel;
       if (article.image) {
         showImagePreview(article.image);
       } else {
@@ -548,6 +558,7 @@
                   <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600">${a.topic || '未分类'}</span>
                   <span>${a.time || ''}</span>
                   <span class="px-2 py-0.5 rounded bg-green-50 text-green-600">${statusLabel(a)}</span>
+                  ${a.is_carousel ? '<span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">轮播中</span>' : ''}
                 </div>
                 <h3 class="mt-1.5 text-sm font-bold text-slate-800 truncate">${a.title}</h3>
                 <div class="mt-1 text-xs text-slate-400">作者：${escapeHtml(a.author || '未知')} | 来源：${escapeHtml(a.source || '相思门户网')}</div>
@@ -556,6 +567,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                   <button type="button" class="edit-btn px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition" data-id="${a.id}">编辑</button>
                   <button type="button" class="delete-btn px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition" data-id="${a.id}">删除</button>
+                  ${canSetCarousel ? `<button type="button" class="carousel-btn px-3 py-1.5 rounded-lg ${a.is_carousel ? 'bg-slate-500' : 'bg-yellow-500'} text-white text-xs font-medium hover:opacity-90 transition" data-id="${a.id}" data-set="${a.is_carousel ? 0 : 1}">${a.is_carousel ? '取消轮播' : '设为轮播'}</button>` : ''}
                 </div>
               ` : '<span class="text-xs text-slate-300 shrink-0">仅作者可操作</span>'}
             </div>
@@ -580,6 +592,19 @@
             await loadArticles();
           } catch (err) {
             showFormMessage(err.message || '删除失败，请稍后重试', 'error');
+          }
+        });
+      });
+      articleListEl.querySelectorAll('.carousel-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.dataset.id);
+          const set = Number(btn.dataset.set);
+          try {
+            await api.updateArticle(id, { is_carousel: set, username: currentUsername });
+            showFormMessage(set ? '已设为轮播' : '已取消轮播', 'success');
+            await loadArticles();
+          } catch (err) {
+            showFormMessage(err.message || '操作失败，请稍后重试', 'error');
           }
         });
       });
@@ -821,11 +846,14 @@
       submitBtn.disabled = true;
       submitBtn.textContent = editingId !== null ? '更新中...' : '发布中...';
       try {
+        const carouselVal = canSetCarousel && carouselCheck ? (carouselCheck.checked ? 1 : 0) : undefined;
         if (editingId !== null) {
-          await api.updateArticle(editingId, { title, content: contentParagraphs, topic, image, source, username: currentUsername });
+          const payload = { title, content: contentParagraphs, topic, image, source, username: currentUsername };
+          if (carouselVal !== undefined) payload.is_carousel = carouselVal;
+          await api.updateArticle(editingId, payload);
           showFormMessage('文章更新成功', 'success');
         } else {
-          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source, currentUsername);
+          await api.createArticle(title, contentParagraphs, topic, formatNow(), image, source, currentUsername, carouselVal);
           showFormMessage('文章发布成功', 'success');
         }
         resetForm();
@@ -848,6 +876,7 @@
     const tabAdminEl = document.getElementById('uc-tab-admin');
     if (canCreate && tabCreatorEl) tabCreatorEl.classList.remove('hidden');
     if (canAdmin && tabAdminEl) tabAdminEl.classList.remove('hidden');
+    if (canSetCarousel && carouselCheckWrap) carouselCheckWrap.classList.remove('hidden');
 
     renderProfile();
     loadProfileStats();
