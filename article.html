@@ -284,7 +284,9 @@
       const countEl = document.getElementById('comment-count');
       if (!listEl || currentArticleId == null) return;
       try {
-        const comments = await api.getComments(currentArticleId);
+        const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const loggedUser = localStorage.getItem('username') || '';
+        const comments = await api.getComments(currentArticleId, loggedIn ? loggedUser : '');
         if (countEl) countEl.textContent = `${comments.length} 条`;
         if (!comments.length) {
           listEl.innerHTML = '<p class="text-sm text-slate-400">暂无评论，快来抢沙发～</p>';
@@ -314,15 +316,26 @@
       const showMore = replies.length > 3;
       const shown = showMore ? replies.slice(0, 3) : replies;
       const rest = showMore ? replies.slice(3) : [];
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const curUser = localStorage.getItem('username') || '';
+      const curRole = localStorage.getItem('role') || '';
+      const isAdmin = curRole === 'superadmin' || curRole === 'admin';
+      const canDelete = isLoggedIn && !comment.is_deleted && (isAdmin || comment.username === curUser);
       return `
         <div class="bg-slate-50 rounded-xl p-4" data-main-id="${comment.id}">
           <div class="flex items-center gap-2 text-sm flex-wrap">
             <span class="font-bold text-brand-600 text-xs shrink-0">#${floor}楼</span>
             <span class="font-semibold text-slate-700">${escapeHtml(comment.username)}</span>
             <span class="text-xs text-slate-400">${escapeHtml(comment.time || '')}</span>
-            <button type="button" class="reply-open ml-auto text-xs text-slate-400 hover:text-brand-600 transition shrink-0" data-reply-to="${escapeHtml(comment.username)}">回复</button>
+            ${comment.is_deleted ? '<span class="text-xs text-red-400">已删除</span>' : ''}
+            <div class="ml-auto flex items-center gap-2 shrink-0">
+              ${!comment.is_deleted ? `<button type="button" class="reply-open text-xs text-slate-400 hover:text-brand-600 transition" data-reply-to="${escapeHtml(comment.username)}">回复</button>` : ''}
+              ${canDelete ? `<button type="button" class="comment-delete text-xs text-slate-400 hover:text-red-500 transition" data-id="${comment.id}">删除</button>` : ''}
+            </div>
           </div>
-          <p class="mt-1.5 text-sm text-slate-700 leading-relaxed break-words">${escapeHtml(comment.content)}</p>
+          ${comment.is_deleted
+            ? '<p class="mt-1.5 text-sm text-slate-400 italic">该评论已被删除</p>'
+            : `<p class="mt-1.5 text-sm text-slate-700 leading-relaxed break-words">${escapeHtml(comment.content)}</p>`}
           ${replies.length ? `
             <div class="mt-2 ml-6 border-l-2 border-slate-200 pl-3 space-y-2">
               ${shown.map(r => renderReply(r)).join('')}
@@ -338,14 +351,25 @@
     }
 
     function renderReply(reply) {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const curUser = localStorage.getItem('username') || '';
+      const curRole = localStorage.getItem('role') || '';
+      const isAdmin = curRole === 'superadmin' || curRole === 'admin';
+      const canDelete = isLoggedIn && !reply.is_deleted && (isAdmin || reply.username === curUser);
       return `
         <div class="text-sm">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="font-semibold text-slate-600">${escapeHtml(reply.username)}</span>
             <span class="text-xs text-slate-400">${escapeHtml(reply.time || '')}</span>
-            <button type="button" class="reply-open text-xs text-slate-400 hover:text-brand-600 transition shrink-0" data-reply-to="${escapeHtml(reply.username)}">回复</button>
+            ${reply.is_deleted ? '<span class="text-xs text-red-400">已删除</span>' : ''}
+            <div class="ml-auto flex items-center gap-2 shrink-0">
+              ${!reply.is_deleted ? `<button type="button" class="reply-open text-xs text-slate-400 hover:text-brand-600 transition" data-reply-to="${escapeHtml(reply.username)}">回复</button>` : ''}
+              ${canDelete ? `<button type="button" class="comment-delete text-xs text-slate-400 hover:text-red-500 transition" data-id="${reply.id}">删除</button>` : ''}
+            </div>
           </div>
-          <p class="mt-0.5 text-slate-600 leading-relaxed break-words"><span class="text-brand-500">回复 @${escapeHtml(reply.reply_to_username || reply.username)}：</span>${escapeHtml(reply.content)}</p>
+          ${reply.is_deleted
+            ? '<p class="mt-0.5 text-slate-400 italic text-sm">该评论已被删除</p>'
+            : `<p class="mt-0.5 text-slate-600 leading-relaxed break-words"><span class="text-brand-500">回复 @${escapeHtml(reply.reply_to_username || reply.username)}：</span>${escapeHtml(reply.content)}</p>`}
         </div>
       `;
     }
@@ -368,6 +392,19 @@
           const collapsed = hiddenWrap.classList.contains('hidden');
           hiddenWrap.classList.toggle('hidden');
           btn.textContent = collapsed ? '收起回复' : (btn.dataset.original || '收起回复');
+        });
+      });
+      listEl.querySelectorAll('.comment-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.dataset.id);
+          const cur = localStorage.getItem('username') || '';
+          if (!confirm('确定要删除这条评论吗？')) return;
+          try {
+            await api.deleteComment(id, cur);
+            await loadComments();
+          } catch (err) {
+            alert(err.message || '删除失败，请稍后重试');
+          }
         });
       });
     }
@@ -472,7 +509,10 @@
 
     // 登录/退出后刷新评论表单状态（auth.js 会派发 authchange 事件）
     document.addEventListener('authchange', () => {
-      if (currentArticleId != null) renderCommentForm();
+      if (currentArticleId != null) {
+        renderCommentForm();
+        loadComments();
+      }
     });
 
     if (idParam === null || idParam.trim() === '' || !Number.isInteger(id)) {

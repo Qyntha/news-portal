@@ -363,7 +363,12 @@ app.get('/api/articles/:id/comments', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: '文章不存在' });
     }
-    const comments = db.prepare('SELECT * FROM comments WHERE articleId = ? ORDER BY id ASC').all(articleId);
+    // 管理员（admin/superadmin）可见已删除评论，其余用户只见未删除评论
+    const viewer = req.query.username ? getUserByUsername(String(req.query.username).trim()) : null;
+    const isAdminView = viewer && (viewer.role === 'superadmin' || viewer.role === 'admin');
+    const comments = isAdminView
+      ? db.prepare('SELECT * FROM comments WHERE articleId = ? ORDER BY id ASC').all(articleId)
+      : db.prepare('SELECT * FROM comments WHERE articleId = ? AND is_deleted = 0 ORDER BY id ASC').all(articleId);
     res.json(comments);
   } catch (error) {
     console.error('获取评论失败:', error);
@@ -404,6 +409,107 @@ app.post('/api/articles/:id/comments', async (req, res) => {
     res.json({ success: true, id: info.lastInsertRowid, comment: newComment, message: '评论成功' });
   } catch (error) {
     console.error('发表评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 软删除评论：DELETE /api/comments/:id ----
+app.delete('/api/comments/:id', async (req, res) => {
+  try {
+    const username = req.query.username || (req.body && req.body.username) || '';
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    const id = Number(req.params.id);
+    const comment = db.prepare('SELECT id, username FROM comments WHERE id = ?').get(id);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: '评论不存在' });
+    }
+    const isAdmin = user.role === 'superadmin' || user.role === 'admin';
+    if (!isAdmin && comment.username !== username) {
+      return res.status(403).json({ success: false, message: '无权删除他人的评论' });
+    }
+    const now = formatNow();
+    db.prepare('UPDATE comments SET is_deleted = 1, deleted_at = ? WHERE id = ?').run(now, id);
+    res.json({ success: true, message: '评论已删除' });
+  } catch (error) {
+    console.error('删除评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 管理员评论列表：GET /api/admin/comments ----
+app.get('/api/admin/comments', async (req, res) => {
+  try {
+    const username = (req.query.username || '').trim();
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+      return res.status(403).json({ success: false, message: '无权查看评论管理' });
+    }
+    const rows = db.prepare(`
+      SELECT c.*, a.title AS article_title
+      FROM comments c
+      LEFT JOIN articles a ON c.articleId = a.id
+      ORDER BY c.id DESC
+    `).all();
+    res.json(rows);
+  } catch (error) {
+    console.error('获取评论列表失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 恢复评论：PUT /api/admin/comments/:id/restore ----
+app.put('/api/admin/comments/:id/restore', async (req, res) => {
+  try {
+    const { username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+      return res.status(403).json({ success: false, message: '无权恢复评论' });
+    }
+    const id = Number(req.params.id);
+    const comment = db.prepare('SELECT id FROM comments WHERE id = ?').get(id);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: '评论不存在' });
+    }
+    db.prepare('UPDATE comments SET is_deleted = 0, deleted_at = \'\' WHERE id = ?').run(id);
+    res.json({ success: true, message: '评论已恢复' });
+  } catch (error) {
+    console.error('恢复评论失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 永久删除评论：DELETE /api/admin/comments/:id/permanent ----
+app.delete('/api/admin/comments/:id/permanent', async (req, res) => {
+  try {
+    const username = req.query.username || (req.body && req.body.username) || '';
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+      return res.status(403).json({ success: false, message: '无权永久删除评论' });
+    }
+    const id = Number(req.params.id);
+    const comment = db.prepare('SELECT id FROM comments WHERE id = ?').get(id);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: '评论不存在' });
+    }
+    db.prepare('DELETE FROM comments WHERE id = ?').run(id);
+    res.json({ success: true, message: '评论已永久删除' });
+  } catch (error) {
+    console.error('永久删除评论失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });

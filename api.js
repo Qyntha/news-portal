@@ -58,8 +58,9 @@ function getArticle(id) {
 }
 
 // 获取文章评论：GET /api/articles/:id/comments
-function getComments(articleId) {
-  return request(`/api/articles/${articleId}/comments`);
+function getComments(articleId, username) {
+  const q = username ? `?username=${encodeURIComponent(username)}` : '';
+  return request(`/api/articles/${articleId}/comments${q}`);
 }
 
 // 发表评论/回复：POST /api/articles/:id/comments
@@ -68,6 +69,30 @@ function addComment(articleId, username, content, parentId, replyToUsername) {
   if (parentId !== undefined && parentId !== null) body.parent_id = parentId;
   if (replyToUsername) body.reply_to_username = replyToUsername;
   return postJSON(`/api/articles/${articleId}/comments`, body);
+}
+
+// 软删除评论：DELETE /api/comments/:id?username=xxx
+function deleteComment(id, username) {
+  return request(`/api/comments/${id}?username=${encodeURIComponent(username || '')}`, { method: 'DELETE' });
+}
+
+// 管理员评论列表：GET /api/admin/comments?username=xxx
+function getAdminComments(username) {
+  return request(`/api/admin/comments?username=${encodeURIComponent(username || '')}`);
+}
+
+// 恢复评论：PUT /api/admin/comments/:id/restore
+function restoreComment(id, username) {
+  return request(`/api/admin/comments/${id}/restore`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username })
+  });
+}
+
+// 永久删除评论：DELETE /api/admin/comments/:id/permanent?username=xxx
+function permanentDeleteComment(id, username) {
+  return request(`/api/admin/comments/${id}/permanent?username=${encodeURIComponent(username || '')}`, { method: 'DELETE' });
 }
 
 // 发布文章：POST /api/articles
@@ -138,5 +163,5 @@ function uploadImage(file, username) {
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getCarousel, getArticle, getComments, addComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
+  window.api = { register, login, getArticles, getCarousel, getArticle, getComments, addComment, deleteComment, getAdminComments, restoreComment, permanentDeleteComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
 }

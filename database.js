@@ -44,6 +44,8 @@ db.exec(`
     time TEXT DEFAULT '',
     parent_id INTEGER DEFAULT NULL,
     reply_to_username TEXT DEFAULT '',
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at TEXT DEFAULT '',
     FOREIGN KEY (articleId) REFERENCES articles(id) ON DELETE CASCADE
   );
 
@@ -74,6 +76,8 @@ ensureColumn('articles', 'author', "TEXT DEFAULT ''");
 ensureColumn('articles', 'is_carousel', 'INTEGER DEFAULT 0');
 ensureColumn('comments', 'parent_id', 'INTEGER DEFAULT NULL');
 ensureColumn('comments', 'reply_to_username', "TEXT DEFAULT ''");
+ensureColumn('comments', 'is_deleted', 'INTEGER DEFAULT 0');
+ensureColumn('comments', 'deleted_at', "TEXT DEFAULT ''");
 const createdAdded = ensureColumn('users', 'created_at', "TEXT DEFAULT ''");
 
 // 旧库刚补 role 列：此前所有注册用户均可发布，统一恢复为管理员身份（仅迁移时执行一次）

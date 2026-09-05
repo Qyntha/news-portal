@@ -262,6 +262,23 @@
           <p id="announcement-msg" class="text-xs min-h-[16px] leading-relaxed"></p>
         </div>
       </div>
+      <div class="mt-6 bg-white rounded-xl shadow-card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-800">评论管理</h2>
+          <button id="comment-refresh-btn" class="text-xs text-brand-500 hover:text-brand-700 transition">刷新</button>
+        </div>
+        <div class="flex items-center gap-3 mb-3 flex-wrap">
+          <input id="comment-title-filter" type="text" placeholder="按文章标题搜索"
+                 class="w-56 rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+          <select id="comment-status-filter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-700 bg-white focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition">
+            <option value="all">全部评论</option>
+            <option value="normal">仅看正常</option>
+            <option value="deleted">仅看已删除</option>
+          </select>
+        </div>
+        <div id="comment-manage-list" class="overflow-x-auto"></div>
+        <p id="comment-manage-msg" class="mt-3 text-xs min-h-[16px] leading-relaxed"></p>
+      </div>
     </section>
   </main>
 
@@ -838,6 +855,122 @@
       });
     }
 
+    // ----- 评论管理（仅 admin / superadmin） -----
+    const commentManageListEl = document.getElementById('comment-manage-list');
+    const commentManageMsgEl = document.getElementById('comment-manage-msg');
+    const commentTitleFilterEl = document.getElementById('comment-title-filter');
+    const commentStatusFilterEl = document.getElementById('comment-status-filter');
+    const commentRefreshBtn = document.getElementById('comment-refresh-btn');
+    let adminCommentsCache = [];
+
+    function showCommentMsg(text, type) {
+      if (!commentManageMsgEl) return;
+      commentManageMsgEl.textContent = text;
+      commentManageMsgEl.className = 'mt-3 text-xs min-h-[16px] leading-relaxed ' +
+        (type === 'success' ? 'text-green-600' : (type === 'error' ? 'text-red-500' : ''));
+    }
+
+    function renderCommentManage() {
+      if (!commentManageListEl) return;
+      const status = commentStatusFilterEl ? commentStatusFilterEl.value : 'all';
+      const keyword = commentTitleFilterEl ? commentTitleFilterEl.value.trim().toLowerCase() : '';
+      let rows = adminCommentsCache.slice();
+      if (status === 'normal') rows = rows.filter(c => !c.is_deleted);
+      if (status === 'deleted') rows = rows.filter(c => c.is_deleted);
+      if (keyword) rows = rows.filter(c => String(c.article_title || '').toLowerCase().includes(keyword));
+      if (!rows.length) {
+        commentManageListEl.innerHTML = '<div class="py-8 text-center text-sm text-slate-400">暂无匹配的评论</div>';
+        return;
+      }
+      commentManageListEl.innerHTML = `
+        <table class="w-full text-sm min-w-[720px]">
+          <thead>
+            <tr class="text-left text-slate-400 border-b border-slate-100">
+              <th class="py-2 pr-3 font-medium">评论ID</th>
+              <th class="py-2 pr-3 font-medium">文章标题</th>
+              <th class="py-2 pr-3 font-medium">评论者</th>
+              <th class="py-2 pr-3 font-medium max-w-[220px]">内容</th>
+              <th class="py-2 pr-3 font-medium">时间</th>
+              <th class="py-2 pr-3 font-medium">状态</th>
+              <th class="py-2 font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(c => `
+              <tr class="border-b border-slate-50 ${c.is_deleted ? 'bg-slate-50' : ''}">
+                <td class="py-2 pr-3 text-slate-500">${c.id}</td>
+                <td class="py-2 pr-3 max-w-[180px] truncate text-slate-700" title="${escapeHtml(c.article_title || '未知文章')}">${escapeHtml(c.article_title || '未知文章')}</td>
+                <td class="py-2 pr-3 font-semibold text-slate-700">${escapeHtml(c.username)}</td>
+                <td class="py-2 pr-3 max-w-[220px] truncate text-slate-600" title="${escapeHtml(c.content || '')}">
+                  ${c.is_deleted ? '<span class="italic text-slate-400">该评论已被删除</span>' : escapeHtml(c.content || '')}
+                </td>
+                <td class="py-2 pr-3 text-xs text-slate-400">${escapeHtml(c.time || '')}</td>
+                <td class="py-2 pr-3">${c.is_deleted
+                  ? '<span class="px-2 py-0.5 rounded bg-red-50 text-red-600 text-xs">🗑️ 已删除</span>'
+                  : '<span class="px-2 py-0.5 rounded bg-green-50 text-green-600 text-xs">✅ 正常</span>'}</td>
+                <td class="py-2">
+                  ${!c.is_deleted
+                    ? `<button type="button" class="cm-softdel px-2 py-1 rounded-md bg-red-500 text-white text-xs transition hover:bg-red-600" data-id="${c.id}">删除</button> `
+                    : `<button type="button" class="cm-restore px-2 py-1 rounded-md bg-green-600 text-white text-xs transition hover:bg-green-700" data-id="${c.id}">恢复</button> `}
+                  <button type="button" class="cm-permanent px-2 py-1 rounded-md bg-slate-600 text-white text-xs transition hover:bg-slate-700" data-id="${c.id}">永久删除</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      commentManageListEl.querySelectorAll('.cm-softdel').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('确定要删除（软删除）这条评论吗？')) return;
+          try {
+            await api.deleteComment(Number(btn.dataset.id), currentUsername);
+            showCommentMsg('评论已删除', 'success');
+            await loadAdminComments();
+          } catch (err) {
+            showCommentMsg(err.message || '删除失败，请稍后重试', 'error');
+          }
+        });
+      });
+      commentManageListEl.querySelectorAll('.cm-restore').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            await api.restoreComment(Number(btn.dataset.id), currentUsername);
+            showCommentMsg('评论已恢复', 'success');
+            await loadAdminComments();
+          } catch (err) {
+            showCommentMsg(err.message || '恢复失败，请稍后重试', 'error');
+          }
+        });
+      });
+      commentManageListEl.querySelectorAll('.cm-permanent').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('确定要永久删除这条评论吗？删除后不可恢复。')) return;
+          try {
+            await api.permanentDeleteComment(Number(btn.dataset.id), currentUsername);
+            showCommentMsg('评论已永久删除', 'success');
+            await loadAdminComments();
+          } catch (err) {
+            showCommentMsg(err.message || '删除失败，请稍后重试', 'error');
+          }
+        });
+      });
+    }
+
+    async function loadAdminComments() {
+      if (!commentManageListEl) return;
+      commentManageListEl.innerHTML = '<div class="py-8 text-center text-sm text-slate-400">加载中...</div>';
+      try {
+        adminCommentsCache = await api.getAdminComments(currentUsername) || [];
+        renderCommentManage();
+      } catch (err) {
+        commentManageListEl.innerHTML = '<div class="py-8 text-center text-sm text-slate-400">评论加载失败，请稍后重试</div>';
+      }
+    }
+
+    if (commentTitleFilterEl) commentTitleFilterEl.addEventListener('input', renderCommentManage);
+    if (commentStatusFilterEl) commentStatusFilterEl.addEventListener('change', renderCommentManage);
+    if (commentRefreshBtn) commentRefreshBtn.addEventListener('click', loadAdminComments);
+
     if (userRefreshBtn) userRefreshBtn.addEventListener('click', loadUsers);
 
     // 专题下拉（来自 data.js hotKeywords）；"无" 表示不属于任何专题
@@ -924,6 +1057,7 @@
     if (canAdmin) {
       loadUsers();
       loadAnnouncements();
+      loadAdminComments();
     }
 
     // ----- Quill 富文本编辑器初始化 -----
