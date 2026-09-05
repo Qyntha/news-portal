@@ -33,8 +33,13 @@ function postJSON(path, body) {
 }
 
 // 用户注册：POST /api/register
-function register(username, password, role) {
-  return postJSON('/api/register', { username, password, role });
+function register(username, password, captchaId, captchaText) {
+  return postJSON('/api/register', { username, password, captchaId, captchaText });
+}
+
+// 获取注册验证码：GET /api/captcha
+function getCaptcha() {
+  return request('/api/captcha');
 }
 
 // 用户登录：POST /api/login
@@ -163,5 +168,5 @@ function uploadImage(file, username) {
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, login, getArticles, getCarousel, getArticle, getComments, addComment, deleteComment, getAdminComments, restoreComment, permanentDeleteComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
+  window.api = { register, getCaptcha, login, getArticles, getCarousel, getArticle, getComments, addComment, deleteComment, getAdminComments, restoreComment, permanentDeleteComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
 }

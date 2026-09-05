@@ -67,6 +67,17 @@
               <input id="register-confirm" type="password" autocomplete="new-password" placeholder="请再次输入密码"
                      class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
             </div>
+            <div class="flex items-end gap-3">
+              <div class="flex-1">
+                <label for="register-captcha" class="block text-sm text-slate-600 mb-1.5">验证码</label>
+                <input id="register-captcha" type="text" maxlength="4" autocomplete="off" placeholder="请输入验证码"
+                       class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition" />
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <div id="captcha-image" class="cursor-pointer rounded-lg overflow-hidden border border-slate-200" onclick="refreshCaptcha()" title="点击刷新验证码"></div>
+                <span class="text-xs text-slate-400 cursor-pointer hover:text-brand-600" onclick="refreshCaptcha()">看不清？换一张</span>
+              </div>
+            </div>
             <div>
               <label for="register-role" class="block text-sm text-slate-600 mb-1.5">注册身份</label>
               <select id="register-role"
@@ -99,6 +110,22 @@
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ---- 注册图形验证码 ----
+  let currentCaptchaId = '';
+  function refreshCaptcha() {
+    const box = document.getElementById('captcha-image');
+    if (!box || !api.getCaptcha) return;
+    api.getCaptcha()
+      .then(data => {
+        if (data && data.success) {
+          currentCaptchaId = data.captchaId;
+          box.innerHTML = data.svg;
+        }
+      })
+      .catch(err => console.error('获取验证码失败:', err));
+  }
+  window.refreshCaptcha = refreshCaptcha;
+
   function switchAuthTab(tab) {
     const isLogin = tab === 'login';
     if (tabLogin) tabLogin.classList.toggle('active-tab', isLogin);
@@ -107,6 +134,7 @@
     if (registerForm) registerForm.classList.toggle('hidden', isLogin);
     if (loginErrorEl) loginErrorEl.textContent = '';
     if (registerErrorEl) registerErrorEl.textContent = '';
+    if (!isLogin) refreshCaptcha();
   }
 
   function openAuthModal(tab) {
@@ -201,13 +229,13 @@
       const username = document.getElementById('register-username').value.trim();
       const password = document.getElementById('register-password').value;
       const confirmPassword = document.getElementById('register-confirm').value;
-      const roleEl = document.getElementById('register-role');
-      const role = roleEl ? roleEl.value : 'user';
+      const captchaText = document.getElementById('register-captcha').value.trim();
       if (username.length < 3) { if (registerErrorEl) registerErrorEl.textContent = '用户名不少于 3 个字符'; return; }
       if (password.length < 6) { if (registerErrorEl) registerErrorEl.textContent = '密码不少于 6 个字符'; return; }
       if (password !== confirmPassword) { if (registerErrorEl) registerErrorEl.textContent = '两次输入的密码不一致'; return; }
+      if (!captchaText) { if (registerErrorEl) registerErrorEl.textContent = '验证码不能为空'; return; }
       try {
-        const data = await api.register(username, password, role);
+        const data = await api.register(username, password, currentCaptchaId, captchaText);
         if (data && data.success) {
           // 注册成功后自动登录
           const loginData = await api.login(username, password);
@@ -217,6 +245,9 @@
             localStorage.setItem('role', loginData.role || 'user');
             localStorage.setItem('created_at', loginData.created_at || '');
             registerForm.reset();
+            const captchaInput = document.getElementById('register-captcha');
+            if (captchaInput) captchaInput.value = '';
+            refreshCaptcha();
             updateAuthUI();
             closeAuthModal();
           } else {
@@ -227,15 +258,23 @@
           }
         } else {
           if (registerErrorEl) registerErrorEl.textContent = (data && data.message) || '注册失败，请稍后重试';
+          const captchaInput = document.getElementById('register-captcha');
+          if (captchaInput) captchaInput.value = '';
+          refreshCaptcha();
         }
       } catch (err) {
         if (registerErrorEl) registerErrorEl.textContent = err.message || '注册失败，请稍后重试';
+        const captchaInput = document.getElementById('register-captcha');
+        if (captchaInput) captchaInput.value = '';
+        refreshCaptcha();
       }
     });
   }
 
   // ---- 页面加载时恢复登录状态 ----
   updateAuthUI();
+  // 预加载一张验证码
+  setTimeout(refreshCaptcha, 300);
   } // end initAuth
 
   // 等 DOM 就绪后再执行（auth.js 可能位于 <head> 中）

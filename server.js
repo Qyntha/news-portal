@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 const multer = require('multer');
 const { createClient } = require('@supabase/supabase-js');
+const svgCaptcha = require('svg-captcha');
 const db = require('./database.js');
 
 const app = express();
@@ -20,6 +21,18 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }
 });
+
+// ---- 图形验证码（内存缓存，5 分钟有效，一次性） ----
+const captchaStore = new Map();
+const CAPTCHA_TTL = 5 * 60 * 1000;
+
+function cleanupCaptcha() {
+  const now = Date.now();
+  for (const [id, item] of captchaStore) {
+    if (item.expiresAt <= now) captchaStore.delete(id);
+  }
+}
+setInterval(cleanupCaptcha, 10 * 60 * 1000);
 
 // 根据用户名查询用户（含角色）
 function getUserByUsername(username) {
@@ -54,14 +67,43 @@ app.get('/', (req, res) => {
   });
 });
 
+// ---- 获取图形验证码：GET /api/captcha ----
+app.get('/api/captcha', (req, res) => {
+  try {
+    cleanupCaptcha();
+    const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0f4f8' });
+    const captchaId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    captchaStore.set(captchaId, { text: captcha.text.toLowerCase(), expiresAt: Date.now() + CAPTCHA_TTL });
+    res.json({ success: true, captchaId, svg: captcha.data });
+  } catch (error) {
+    console.error('生成验证码失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
 // ---- 用户注册 ----
 app.post('/api/register', async (req, res) => {
   // 所有新注册用户固定为普通用户（user），忽略请求中可能传入的角色参数
-  const { username, password } = req.body || {};
+  const { username, password, captchaId, captchaText } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
   try {
+    // 图形验证码校验
+    const captchaTextTrim = String(captchaText || '').trim().toLowerCase();
+    if (!captchaId || !captchaTextTrim) {
+      return res.status(400).json({ success: false, message: '验证码不能为空' });
+    }
+    const captchaItem = captchaStore.get(captchaId);
+    if (!captchaItem || captchaItem.expiresAt <= Date.now()) {
+      captchaStore.delete(captchaId);
+      return res.status(400).json({ success: false, message: '验证码已过期，请重新获取' });
+    }
+    if (captchaItem.text !== captchaTextTrim) {
+      return res.status(400).json({ success: false, message: '验证码错误' });
+    }
+    // 一次性使用：校验通过后立即作废
+    captchaStore.delete(captchaId);
     // 保留用户名 admin：只有它才是最高管理员，不允许通过注册冒领
     if (username === 'admin') {
       return res.status(400).json({ success: false, message: '该用户名已被保留，无法注册' });
