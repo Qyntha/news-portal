@@ -55,6 +55,24 @@ db.exec(`
     is_active BOOLEAN DEFAULT 1,
     updated_at TEXT DEFAULT ''
   );
+
+  CREATE TABLE IF NOT EXISTS likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    articleId INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    time TEXT DEFAULT '',
+    UNIQUE(articleId, username),
+    FOREIGN KEY (articleId) REFERENCES articles(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    articleId INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    time TEXT DEFAULT '',
+    UNIQUE(articleId, username),
+    FOREIGN KEY (articleId) REFERENCES articles(id) ON DELETE CASCADE
+  );
 `);
 
 // ---- 兼容旧数据库：为已有表补充缺失的列（一次性迁移） ----

@@ -165,38 +165,39 @@
     </div>
   </div>
 
-  <!-- ===== 头条焦点 · 三张头条卡 ===== -->
+  <!-- ===== 第一区 · 今日头条（全宽轮播） ===== -->
   <section class="max-w-7xl mx-auto px-4 pt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">今日头条</h2>
+    </div>
+    <div id="carousel-wrap" class="relative rounded-xl overflow-hidden shadow-card">
+      <div id="carousel-viewport" class="relative h-[420px] overflow-hidden bg-slate-100">
+        <div class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">加载中...</div>
+      </div>
+      <button id="carousel-prev" type="button" aria-label="上一张" class="carousel-arrow left-3">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <button id="carousel-next" type="button" aria-label="下一张" class="carousel-arrow right-3">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <div id="carousel-dots" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
+    </div>
+  </section>
+
+  <!-- ===== 第二区 · 最新三条题图新闻 ===== -->
+  <section class="max-w-7xl mx-auto px-4 pt-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">最新速览</h2>
+    </div>
     <div id="top-cards" class="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
   </section>
 
-  <!-- ===== 头条封面 + 最新要闻 ===== -->
+  <!-- ===== 第三区 · 最新要闻 + 排行榜 ===== -->
   <section class="max-w-7xl mx-auto px-4 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-      <!-- 左 · 封面头条 -->
-      <div class="lg:col-span-2">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-slate-800 border-l-4 border-brand-600 pl-3">今日头条</h2>
-        </div>
-
-        <!-- 轮播图 -->
-        <div id="carousel-wrap" class="relative rounded-xl overflow-hidden shadow-card">
-          <div id="carousel-viewport" class="relative h-[420px] overflow-hidden bg-slate-100">
-            <div class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">加载中...</div>
-          </div>
-          <button id="carousel-prev" type="button" aria-label="上一张" class="carousel-arrow left-3">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <button id="carousel-next" type="button" aria-label="下一张" class="carousel-arrow right-3">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-          </button>
-          <div id="carousel-dots" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10"></div>
-        </div>
-      </div>
-
-      <!-- 右 · 最新要闻 -->
-      <aside class="bg-white rounded-xl shadow-card p-5 flex flex-col">
+      <!-- 左 · 最新要闻 -->
+      <aside class="lg:col-span-2 bg-white rounded-xl shadow-card p-5 flex flex-col">
         <div class="flex items-center justify-between mb-1">
           <h2 class="text-lg font-bold text-slate-800">最新要闻</h2>
           <span class="px-2 py-0.5 rounded bg-brand-600 text-white text-xs">快讯</span>
@@ -204,6 +205,24 @@
         <ul id="latest-news" class="divide-y divide-slate-100 text-sm"></ul>
         <a href="allnews.html" class="mt-auto pt-4 block text-xs text-brand-500 hover:text-brand-700 transition text-center">查看更多要闻 ›</a>
       </aside>
+
+      <!-- 右 · 排行榜 -->
+      <div class="lg:col-span-1 flex flex-col gap-6">
+        <div class="bg-white rounded-xl shadow-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-bold text-slate-800">🔥 点赞排行</h2>
+            <span class="text-xs text-slate-400">TOP 5</span>
+          </div>
+          <ul id="like-ranking" class="space-y-2 text-sm"></ul>
+        </div>
+        <div class="bg-white rounded-xl shadow-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-bold text-slate-800">⭐ 收藏排行</h2>
+            <span class="text-xs text-slate-400">TOP 5</span>
+          </div>
+          <ul id="favorite-ranking" class="space-y-2 text-sm"></ul>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -429,14 +448,12 @@
         <a href="article.html?id=${card.id}" class="group block bg-white rounded-xl overflow-hidden shadow-card hover:shadow-lg transition cursor-pointer">
           <div class="relative h-48 overflow-hidden">
             <img src="${cardImage(card, 640, 420)}" alt="${card.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
-            <span class="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center flex">${i + 1}</span>
           </div>
           <div class="p-5">
             <h3 class="text-base font-bold text-slate-800 group-hover:text-brand-600 transition">${card.title}</h3>
-            <p class="mt-1 text-xs text-slate-400">${excerpt(card.content, 20)}</p>
             <div class="mt-3 flex items-center justify-between">
               <span class="px-2 py-0.5 rounded bg-blue-50 text-brand-600 text-xs">${card.topic || '新闻'}</span>
-              <span class="text-xs text-brand-500 group-hover:text-brand-700 transition">阅读全文 →</span>
+              <span class="text-xs text-slate-400">${card.time || ''}</span>
             </div>
           </div>
         </a>
@@ -534,6 +551,39 @@
         </li>
       `).join('');
     }
+
+    // ----- 排行榜（点赞 / 收藏） -----
+    const likeRankingEl = document.getElementById('like-ranking');
+    const favoriteRankingEl = document.getElementById('favorite-ranking');
+
+    function rankBadge(index) {
+      const colors = ['bg-yellow-400 text-white', 'bg-slate-300 text-slate-700', 'bg-orange-400 text-white'];
+      const cls = colors[index] || 'bg-slate-100 text-slate-400';
+      return `<span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${cls}">${index + 1}</span>`;
+    }
+
+    function renderRanking(el, list, unit) {
+      if (!el) return;
+      const rows = (list || []).slice(0, 5);
+      if (!rows.length) {
+        el.innerHTML = '<li class="py-4 text-center text-xs text-slate-400">暂无数据</li>';
+        return;
+      }
+      el.innerHTML = rows.map((item, i) => `
+        <li class="flex items-center gap-2">
+          ${rankBadge(i)}
+          <a href="article.html?id=${item.id}" class="flex-1 truncate text-slate-700 hover:text-brand-600 transition">${item.title}</a>
+          <span class="text-xs text-slate-400 shrink-0">${item.count}</span>
+        </li>
+      `).join('');
+    }
+
+    api.getLikeRankings()
+      .then(list => renderRanking(likeRankingEl, list))
+      .catch(() => renderRanking(likeRankingEl, []));
+    api.getFavoriteRankings()
+      .then(list => renderRanking(favoriteRankingEl, list))
+      .catch(() => renderRanking(favoriteRankingEl, []));
 
     // ----- 频道精选：按指定专题顺序取每专题最新文章 -----
     const channelCardsWrap = document.getElementById('channel-cards');

@@ -235,6 +235,16 @@
           <span>发布时间：${article.time || ''}</span>
           <span>来源：${article.source || '相思门户网'}</span>
         </div>
+        <div class="flex items-center gap-4 my-4">
+          <button id="like-btn" type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 text-slate-500 hover:border-brand-600 hover:text-brand-600 transition">
+            <span id="like-icon">👍</span>
+            <span id="like-count">0</span>
+          </button>
+          <button id="favorite-btn" type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 text-slate-500 hover:border-accent hover:text-accent transition">
+            <span id="favorite-icon">⭐</span>
+            <span id="favorite-count">0</span>
+          </button>
+        </div>
         ${article.image ? `<img src="${article.image}" alt="${article.title}" onerror="this.style.display='none'" class="w-full h-auto rounded-xl my-6" />` : ''}
         <hr class="my-6 border-slate-100" />
         <div class="article-body text-[15px] leading-7 text-slate-700">${article.content || ''}</div>
@@ -251,6 +261,7 @@
         </div>
       `;
       initComments(article.id);
+      initInteractions(article.id);
     }
 
     function renderNotFound() {
@@ -266,6 +277,74 @@
           </a>
         </div>
       `;
+    }
+
+    // ----- 点赞 / 收藏 -----
+    let applyInteractionState = null;
+
+    function openLoginPrompt() {
+      const loginBtn = document.getElementById('login-btn');
+      if (loginBtn) { loginBtn.click(); return; }
+      alert('请先登录后再操作');
+    }
+
+    async function refreshInteractions() {
+      if (currentArticleId == null || !applyInteractionState) return;
+      const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const user = localStorage.getItem('username') || '';
+      try {
+        applyInteractionState(await api.getInteractions(currentArticleId, loggedIn ? user : ''));
+      } catch (err) {
+        console.error('互动状态刷新失败:', err);
+      }
+    }
+
+    function initInteractions(articleId) {
+      const likeBtn = document.getElementById('like-btn');
+      const favBtn = document.getElementById('favorite-btn');
+      const likeCountEl = document.getElementById('like-count');
+      const favCountEl = document.getElementById('favorite-count');
+      if (!likeBtn || !favBtn) return;
+
+      const apply = (state) => {
+        if (!state) return;
+        if (likeCountEl) likeCountEl.textContent = state.likes != null ? state.likes : 0;
+        if (favCountEl) favCountEl.textContent = state.favorites != null ? state.favorites : 0;
+        likeBtn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-full border transition ' +
+          (state.liked
+            ? 'border-brand-600 bg-brand-50 text-brand-600'
+            : 'border-slate-200 text-slate-500 hover:border-brand-600 hover:text-brand-600');
+        favBtn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-full border transition ' +
+          (state.favorited
+            ? 'border-accent bg-orange-50 text-accent'
+            : 'border-slate-200 text-slate-500 hover:border-accent hover:text-accent');
+      };
+      applyInteractionState = apply;
+
+      const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const user = localStorage.getItem('username') || '';
+      api.getInteractions(articleId, loggedIn ? user : '')
+        .then(apply)
+        .catch(err => console.error('互动状态加载失败:', err));
+
+      likeBtn.addEventListener('click', async () => {
+        if (localStorage.getItem('isLoggedIn') !== 'true') { openLoginPrompt(); return; }
+        try {
+          await api.toggleLike(articleId, localStorage.getItem('username') || '');
+          await refreshInteractions();
+        } catch (err) {
+          alert(err.message || '操作失败，请稍后重试');
+        }
+      });
+      favBtn.addEventListener('click', async () => {
+        if (localStorage.getItem('isLoggedIn') !== 'true') { openLoginPrompt(); return; }
+        try {
+          await api.toggleFavorite(articleId, localStorage.getItem('username') || '');
+          await refreshInteractions();
+        } catch (err) {
+          alert(err.message || '操作失败，请稍后重试');
+        }
+      });
     }
 
     // ----- 评论 -----
@@ -512,6 +591,7 @@
       if (currentArticleId != null) {
         renderCommentForm();
         loadComments();
+        refreshInteractions();
       }
     });
 

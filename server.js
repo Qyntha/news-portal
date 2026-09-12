@@ -192,10 +192,117 @@ app.get('/api/carousel', async (req, res) => {
 // ---- 文章列表 ----
 app.get('/api/articles', async (req, res) => {
   try {
-    const articles = db.prepare('SELECT * FROM articles ORDER BY id DESC').all();
+    const articles = db.prepare(`
+      SELECT a.*,
+        (SELECT COUNT(*) FROM likes l WHERE l.articleId = a.id) AS likesCount,
+        (SELECT COUNT(*) FROM favorites f WHERE f.articleId = a.id) AS favoritesCount
+      FROM articles a
+      ORDER BY a.id DESC
+    `).all();
     res.json(articles);
   } catch (error) {
     console.error('获取文章列表失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 点赞/收藏：切换状态 ----
+function toggleInteraction(table, req, res, flagName) {
+  try {
+    const articleId = Number(req.params.id);
+    const { username } = req.body || {};
+    if (!username) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    const user = getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ success: false, message: '用户不存在，请重新登录' });
+    }
+    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    const existing = db.prepare(`SELECT id FROM ${table} WHERE articleId = ? AND username = ?`).get(articleId, username);
+    let active;
+    if (existing) {
+      db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(existing.id);
+      active = false;
+    } else {
+      db.prepare(`INSERT INTO ${table} (articleId, username, time) VALUES (?, ?, ?)`).run(articleId, username, formatNow());
+      active = true;
+    }
+    const count = db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE articleId = ?`).get(articleId).n;
+    const payload = { success: true, count };
+    payload[flagName] = active;
+    res.json(payload);
+  } catch (error) {
+    console.error('操作失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+}
+
+// ---- 点赞：POST /api/articles/:id/like ----
+app.post('/api/articles/:id/like', (req, res) => toggleInteraction('likes', req, res, 'liked'));
+
+// ---- 收藏：POST /api/articles/:id/favorite ----
+app.post('/api/articles/:id/favorite', (req, res) => toggleInteraction('favorites', req, res, 'favorited'));
+
+// ---- 文章互动状态：GET /api/articles/:id/interactions ----
+app.get('/api/articles/:id/interactions', async (req, res) => {
+  try {
+    const articleId = Number(req.params.id);
+    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, message: '文章不存在' });
+    }
+    const username = (req.query.username || '').trim();
+    const likes = db.prepare('SELECT COUNT(*) AS n FROM likes WHERE articleId = ?').get(articleId).n;
+    const favorites = db.prepare('SELECT COUNT(*) AS n FROM favorites WHERE articleId = ?').get(articleId).n;
+    const liked = username
+      ? !!db.prepare('SELECT id FROM likes WHERE articleId = ? AND username = ?').get(articleId, username)
+      : false;
+    const favorited = username
+      ? !!db.prepare('SELECT id FROM favorites WHERE articleId = ? AND username = ?').get(articleId, username)
+      : false;
+    res.json({ likes, favorites, liked, favorited });
+  } catch (error) {
+    console.error('获取互动状态失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 点赞排行榜：GET /api/rankings/likes ----
+app.get('/api/rankings/likes', async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT a.id, a.title, COUNT(l.id) AS count
+      FROM articles a
+      JOIN likes l ON l.articleId = a.id
+      GROUP BY a.id
+      ORDER BY count DESC, a.id DESC
+      LIMIT 10
+    `).all();
+    res.json(rows);
+  } catch (error) {
+    console.error('获取点赞排行榜失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// ---- 收藏排行榜：GET /api/rankings/favorites ----
+app.get('/api/rankings/favorites', async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT a.id, a.title, COUNT(f.id) AS count
+      FROM articles a
+      JOIN favorites f ON f.articleId = a.id
+      GROUP BY a.id
+      ORDER BY count DESC, a.id DESC
+      LIMIT 10
+    `).all();
+    res.json(rows);
+  } catch (error) {
+    console.error('获取收藏排行榜失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });

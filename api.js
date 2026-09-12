@@ -57,6 +57,32 @@ function getCarousel() {
   return request('/api/carousel');
 }
 
+// 点赞/取消点赞：POST /api/articles/:id/like
+function toggleLike(articleId, username) {
+  return postJSON(`/api/articles/${articleId}/like`, { username });
+}
+
+// 收藏/取消收藏：POST /api/articles/:id/favorite
+function toggleFavorite(articleId, username) {
+  return postJSON(`/api/articles/${articleId}/favorite`, { username });
+}
+
+// 文章互动状态：GET /api/articles/:id/interactions?username=xxx
+function getInteractions(articleId, username) {
+  const q = username ? `?username=${encodeURIComponent(username)}` : '';
+  return request(`/api/articles/${articleId}/interactions${q}`);
+}
+
+// 点赞排行榜：GET /api/rankings/likes
+function getLikeRankings() {
+  return request('/api/rankings/likes');
+}
+
+// 收藏排行榜：GET /api/rankings/favorites
+function getFavoriteRankings() {
+  return request('/api/rankings/favorites');
+}
+
 // 获取单篇文章：GET /api/articles/:id
 function getArticle(id) {
   return request(`/api/articles/${id}`);
@@ -168,5 +194,5 @@ function uploadImage(file, username) {
 
 // 统一挂载到 window，便于页面脚本调用
 if (typeof window !== 'undefined') {
-  window.api = { register, getCaptcha, login, getArticles, getCarousel, getArticle, getComments, addComment, deleteComment, getAdminComments, restoreComment, permanentDeleteComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
+  window.api = { register, getCaptcha, login, getArticles, getCarousel, toggleLike, toggleFavorite, getInteractions, getLikeRankings, getFavoriteRankings, getArticle, getComments, addComment, deleteComment, getAdminComments, restoreComment, permanentDeleteComment, createArticle, updateArticle, deleteArticle, getUsers, setRole, getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, uploadImage };
 }
